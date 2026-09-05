@@ -1,5 +1,5 @@
-import { createHmac } from "node:crypto";
 import { describe, expect, test } from "bun:test";
+import { createHmac } from "node:crypto";
 import { PilotStateStore } from "./state-store.ts";
 import { jsonResponse, pilotTestConfig } from "./test-fixtures.ts";
 import { parseWhatsAppWebhook, WhatsAppCloudProvider } from "./whatsapp.ts";
@@ -31,7 +31,10 @@ describe("WhatsApp Cloud provider", () => {
 	});
 
 	test("kill switch blocks live network calls", async () => {
-		const config = pilotTestConfig({ PILOT_DRY_RUN: "false", PILOT_KILL_SWITCH: "true" });
+		const config = pilotTestConfig({
+			PILOT_DRY_RUN: "false",
+			PILOT_KILL_SWITCH: "true",
+		});
 		const provider = new WhatsAppCloudProvider(
 			config,
 			new PilotStateStore(":memory:"),

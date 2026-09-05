@@ -1,4 +1,4 @@
-import { pilotConfigSchema, type PilotConfig } from "./config.ts";
+import { type PilotConfig, pilotConfigSchema } from "./config.ts";
 
 export function pilotTestConfig(
 	overrides: Record<string, string> = {},
@@ -37,7 +37,10 @@ export function hubSpotFixtureFetch(requestLog: string[] = []): typeof fetch {
 					? input.toString()
 					: input.url;
 		requestLog.push(`${init?.method ?? "GET"} ${url}`);
-		if (url.includes("/crm/v3/objects/deals/100?") && (init?.method ?? "GET") === "GET") {
+		if (
+			url.includes("/crm/v3/objects/deals/100?") &&
+			(init?.method ?? "GET") === "GET"
+		) {
 			return jsonResponse({
 				id: "100",
 				createdAt: "2026-08-01T12:00:00.000Z",
@@ -63,8 +66,14 @@ export function hubSpotFixtureFetch(requestLog: string[] = []): typeof fetch {
 				},
 			});
 		}
-		if (url.includes("/crm/v3/objects/deals/100?") && url.includes("oplera_recovery_attempts")) {
-			return jsonResponse({ id: "100", properties: { oplera_recovery_attempts: "0" } });
+		if (
+			url.includes("/crm/v3/objects/deals/100?") &&
+			url.includes("oplera_recovery_attempts")
+		) {
+			return jsonResponse({
+				id: "100",
+				properties: { oplera_recovery_attempts: "0" },
+			});
 		}
 		if (url.includes("/crm/v3/objects/contacts/batch/read")) {
 			return jsonResponse({
@@ -83,7 +92,9 @@ export function hubSpotFixtureFetch(requestLog: string[] = []): typeof fetch {
 			});
 		}
 		if (url.includes("/crm/v3/objects/companies/batch/read")) {
-			return jsonResponse({ results: [{ id: "300", properties: { name: "ACME" } }] });
+			return jsonResponse({
+				results: [{ id: "300", properties: { name: "ACME" } }],
+			});
 		}
 		if (url.includes("/crm/v3/objects/notes/batch/read")) {
 			return jsonResponse({
@@ -93,7 +104,8 @@ export function hubSpotFixtureFetch(requestLog: string[] = []): typeof fetch {
 						updatedAt: "2026-09-01T11:00:00.000Z",
 						properties: {
 							hs_timestamp: "2026-09-01T11:00:00.000Z",
-							hs_note_body: "Proposta enviada. Cliente pediu para retomar em setembro.",
+							hs_note_body:
+								"Proposta enviada. Cliente pediu para retomar em setembro.",
 						},
 					},
 				],
@@ -107,7 +119,10 @@ export function hubSpotFixtureFetch(requestLog: string[] = []): typeof fetch {
 			return jsonResponse({ results: [] });
 		}
 		if (url.endsWith("/crm/v3/objects/notes") && init?.method === "POST") {
-			return jsonResponse({ id: `note-${requestLog.length}`, properties: {} }, 201);
+			return jsonResponse(
+				{ id: `note-${requestLog.length}`, properties: {} },
+				201,
+			);
 		}
 		if (url.includes("/crm/v3/objects/deals/100") && init?.method === "PATCH") {
 			return jsonResponse({ id: "100", properties: {} });

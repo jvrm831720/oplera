@@ -1,15 +1,28 @@
 import { createHash } from "node:crypto";
-import { resolveServiceWindow } from "../domain/recovery.ts";
-import { AutonomousRecoveryEngine, draftRecoveryMessage } from "../autonomy/engine.ts";
+import {
+	AutonomousRecoveryEngine,
+	draftRecoveryMessage,
+} from "../autonomy/engine.ts";
 import { planRecovery } from "../autonomy/planner.ts";
-import { defaultRecoveryPolicy, evaluateRecoveryPolicy } from "../autonomy/policy-engine.ts";
+import {
+	defaultRecoveryPolicy,
+	evaluateRecoveryPolicy,
+} from "../autonomy/policy-engine.ts";
 import { MemoryTaskQueue } from "../autonomy/task-queue.ts";
-import type { MessageMode, PolicyDecision, RecoveryCandidate } from "../autonomy/types.ts";
+import type {
+	MessageMode,
+	PolicyDecision,
+	RecoveryCandidate,
+} from "../autonomy/types.ts";
+import { resolveServiceWindow } from "../domain/recovery.ts";
 import { loadPilotConfig, type PilotConfig } from "./config.ts";
 import { HubSpotCRMProvider } from "./hubspot.ts";
 import { pilotLog } from "./logger.ts";
 import { PilotStateStore } from "./state-store.ts";
-import { type WhatsAppInboundMessage, WhatsAppCloudProvider } from "./whatsapp.ts";
+import {
+	WhatsAppCloudProvider,
+	type WhatsAppInboundMessage,
+} from "./whatsapp.ts";
 
 export interface PilotPreview {
 	candidate: RecoveryCandidate;
@@ -23,7 +36,9 @@ export interface PilotPreview {
 }
 
 function lastOutboundAt(candidate: RecoveryCandidate): string | undefined {
-	return [...candidate.conversation].reverse().find((item) => item.direction === "outbound")?.timestamp;
+	return [...candidate.conversation]
+		.reverse()
+		.find((item) => item.direction === "outbound")?.timestamp;
 }
 
 function fingerprintFor(input: {
@@ -68,12 +83,24 @@ export class PilotRuntime {
 		return this.hubspot.listRecoveryCandidates();
 	}
 
-	async preview(opportunityId: string, now = new Date().toISOString()): Promise<PilotPreview> {
+	async preview(
+		opportunityId: string,
+		now = new Date().toISOString(),
+	): Promise<PilotPreview> {
 		const candidate = await this.hubspot.getOpportunityContext(opportunityId);
 		if (!candidate) throw new Error("opportunity_not_found");
-		const plan = planRecovery(candidate, defaultRecoveryPolicy.contact.maxAttempts);
-		const serviceWindow = resolveServiceWindow(candidate.conversation, new Date(now));
-		const messageMode: MessageMode = serviceWindow.serviceWindowOpen === true ? "free_form" : "approved_template";
+		const plan = planRecovery(
+			candidate,
+			defaultRecoveryPolicy.contact.maxAttempts,
+		);
+		const serviceWindow = resolveServiceWindow(
+			candidate.conversation,
+			new Date(now),
+		);
+		const messageMode: MessageMode =
+			serviceWindow.serviceWindowOpen === true
+				? "free_form"
+				: "approved_template";
 		const message = draftRecoveryMessage(candidate);
 		const policy = evaluateRecoveryPolicy({
 			policy: defaultRecoveryPolicy,
@@ -130,9 +157,14 @@ export class PilotRuntime {
 	async execute(opportunityId: string, now = new Date().toISOString()) {
 		const preview = await this.preview(opportunityId, now);
 		if (preview.policy.result !== "allowed") {
-			return { status: "policy_blocked" as const, policy: preview.policy, preview };
+			return {
+				status: "policy_blocked" as const,
+				policy: preview.policy,
+				preview,
+			};
 		}
-		if (preview.requiresHumanApproval) throw new Error("pilot_first_contact_approval_required");
+		if (preview.requiresHumanApproval)
+			throw new Error("pilot_first_contact_approval_required");
 
 		const idempotencyKey = `pilot:${preview.candidate.id}:${preview.plan.strategy}:${preview.candidate.attempt + 1}:${preview.messageMode}`;
 		const result =
@@ -177,7 +209,8 @@ export class PilotRuntime {
 			);
 			await this.hubspot.updateOpportunity(opportunityId, "awaiting_reply");
 			this.state.markWritebackComplete(idempotencyKey, now);
-			if (preview.candidate.attempt === 0) this.state.consumeApproval(opportunityId, now);
+			if (preview.candidate.attempt === 0)
+				this.state.consumeApproval(opportunityId, now);
 		}
 
 		return {
@@ -193,7 +226,9 @@ export class PilotRuntime {
 		if (!this.state.markInboundSeen(message.id, message.timestamp)) {
 			return { status: "duplicate" as const, messageId: message.id };
 		}
-		const opportunityId = await this.hubspot.findAllowedOpportunityByPhone(message.from);
+		const opportunityId = await this.hubspot.findAllowedOpportunityByPhone(
+			message.from,
+		);
 		if (!opportunityId) {
 			pilotLog("warn", "whatsapp_inbound_not_allowlisted", {
 				message_id: message.id,
@@ -210,7 +245,12 @@ export class PilotRuntime {
 			opportunityId,
 			`WhatsApp inbound ${message.id} classified as ${decision.intent}.`,
 		);
-		return { status: "processed" as const, messageId: message.id, opportunityId, decision };
+		return {
+			status: "processed" as const,
+			messageId: message.id,
+			opportunityId,
+			decision,
+		};
 	}
 }
 
@@ -221,10 +261,8 @@ export function getPilotRuntime(): PilotRuntime {
 	const config = loadPilotConfig();
 	const state = new PilotStateStore(config.PILOT_STATE_DB_PATH);
 	const hubspot = new HubSpotCRMProvider(config);
-	const whatsapp = new WhatsAppCloudProvider(
-		config,
-		state,
-		(id) => hubspot.resolveMessagingRecipient(id),
+	const whatsapp = new WhatsAppCloudProvider(config, state, (id) =>
+		hubspot.resolveMessagingRecipient(id),
 	);
 	singleton = new PilotRuntime(config, state, hubspot, whatsapp);
 	return singleton;

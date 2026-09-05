@@ -15,10 +15,8 @@ describe("live pilot runtime", () => {
 			() => new Date("2026-09-07T15:00:00.000Z"),
 		);
 		const state = new PilotStateStore(":memory:");
-		const whatsapp = new WhatsAppCloudProvider(
-			config,
-			state,
-			(id) => hubspot.resolveMessagingRecipient(id),
+		const whatsapp = new WhatsAppCloudProvider(config, state, (id) =>
+			hubspot.resolveMessagingRecipient(id),
 		);
 		const runtime = new PilotRuntime(config, state, hubspot, whatsapp);
 		const now = "2026-09-07T15:00:00.000Z";

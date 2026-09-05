@@ -1,12 +1,12 @@
-import type { ConversationMessage } from "../domain/recovery.ts";
-import { scoreRecoveryCandidate } from "../autonomy/scoring.ts";
 import type { CRMProvider } from "../autonomy/providers.ts";
+import { scoreRecoveryCandidate } from "../autonomy/scoring.ts";
 import {
-	recoveryStatusSchema,
 	type RecoveryCandidate,
 	type RecoverySignals,
 	type RecoveryStatus,
+	recoveryStatusSchema,
 } from "../autonomy/types.ts";
+import type { ConversationMessage } from "../domain/recovery.ts";
 import { normalizePhone, type PilotConfig } from "./config.ts";
 import { pilotLog } from "./logger.ts";
 
@@ -20,10 +20,7 @@ interface HubSpotRecord {
 	properties: Record<string, string | null | undefined>;
 	createdAt?: string;
 	updatedAt?: string;
-	associations?: Record<
-		string,
-		{ results?: HubSpotAssociationResult[] }
-	>;
+	associations?: Record<string, { results?: HubSpotAssociationResult[] }>;
 }
 
 interface NormalizedActivity {
@@ -36,7 +33,10 @@ interface NormalizedActivity {
 type FetchLike = typeof fetch;
 
 function stripHtml(value: string): string {
-	return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+	return value
+		.replace(/<[^>]+>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 }
 
 function safeDate(value: string | null | undefined, fallback: string): string {
@@ -45,7 +45,10 @@ function safeDate(value: string | null | undefined, fallback: string): string {
 	return Number.isNaN(parsed) ? fallback : new Date(parsed).toISOString();
 }
 
-function activityText(type: NormalizedActivity["type"], record: HubSpotRecord): string {
+function activityText(
+	type: NormalizedActivity["type"],
+	record: HubSpotRecord,
+): string {
 	const p = record.properties;
 	if (type === "notes") return stripHtml(p.hs_note_body ?? "");
 	if (type === "calls") return stripHtml(p.hs_call_body ?? "");
@@ -77,21 +80,33 @@ function deriveLostReason(text: string): RecoverySignals["lostReason"] {
 	return text.trim() ? "other" : "none";
 }
 
-function parseOpleraConversation(activities: NormalizedActivity[]): ConversationMessage[] {
+function parseOpleraConversation(
+	activities: NormalizedActivity[],
+): ConversationMessage[] {
 	const messages: ConversationMessage[] = [];
 	for (const activity of activities) {
 		if (activity.type !== "notes") continue;
 		const inbound = activity.text.match(/^\[OPLERA_INBOUND\]\s*(.*)$/s);
 		if (inbound) {
-			messages.push({ direction: "inbound", text: inbound[1] ?? "", timestamp: activity.timestamp });
+			messages.push({
+				direction: "inbound",
+				text: inbound[1] ?? "",
+				timestamp: activity.timestamp,
+			});
 			continue;
 		}
 		const outbound = activity.text.match(/^\[OPLERA_OUTBOUND\]\s*(.*)$/s);
 		if (outbound) {
-			messages.push({ direction: "outbound", text: outbound[1] ?? "", timestamp: activity.timestamp });
+			messages.push({
+				direction: "outbound",
+				text: outbound[1] ?? "",
+				timestamp: activity.timestamp,
+			});
 		}
 	}
-	return messages.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+	return messages.sort(
+		(a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
+	);
 }
 
 export class HubSpotCRMProvider implements CRMProvider {
@@ -126,12 +141,15 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const contact = contacts[0];
 		const company = companies[0];
 		const reference = this.now();
-		const fallbackTimestamp = deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
+		const fallbackTimestamp =
+			deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
 		const latestActivityMs = Math.max(
 			Date.parse(fallbackTimestamp) || 0,
 			...activities.map((item) => Date.parse(item.timestamp) || 0),
 		);
-		const lastActivity = new Date(latestActivityMs || reference.getTime()).toISOString();
+		const lastActivity = new Date(
+			latestActivityMs || reference.getTime(),
+		).toISOString();
 		const daysInactive = Math.max(
 			0,
 			Math.floor((reference.getTime() - Date.parse(lastActivity)) / 86_400_000),
@@ -144,20 +162,37 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const lastConversation = conversation.at(-1);
 		const signals: RecoverySignals = {
 			previousEngagement: activities.length > 0,
-			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(combinedText),
-			explicitBuyingQuestion: /quanto|preço|valor|fechar|contrato|começar|iniciar|pagamento/i.test(combinedText),
-			knownObjection: /budget|orçamento|sem verba|preço|caro|objeção/i.test(combinedText),
-			sellerDropped: Boolean(lastConversation?.direction === "inbound" && daysInactive >= 2),
+			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(
+				combinedText,
+			),
+			explicitBuyingQuestion:
+				/quanto|preço|valor|fechar|contrato|começar|iniciar|pagamento/i.test(
+					combinedText,
+				),
+			knownObjection: /budget|orçamento|sem verba|preço|caro|objeção/i.test(
+				combinedText,
+			),
+			sellerDropped: Boolean(
+				lastConversation?.direction === "inbound" && daysInactive >= 2,
+			),
 			lostReason: deriveLostReason(
-				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? combinedText,
+				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ??
+					combinedText,
 			),
 		};
-		const storedStatus = deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ?? "discovered";
+		const storedStatus =
+			deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ??
+			"discovered";
 		const parsedStatus = recoveryStatusSchema.safeParse(storedStatus);
-		const status: RecoveryStatus = parsedStatus.success ? parsedStatus.data : "discovered";
-		const optedOut = status === "suppressed" || /\[OPLERA_OPT_OUT\]/i.test(combinedText);
+		const status: RecoveryStatus = parsedStatus.success
+			? parsedStatus.data
+			: "discovered";
+		const optedOut =
+			status === "suppressed" || /\[OPLERA_OPT_OUT\]/i.test(combinedText);
 		const activeHumanConversation =
-			(deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? "").toLowerCase() === "true";
+			(
+				deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? ""
+			).toLowerCase() === "true";
 		const score = scoreRecoveryCandidate({
 			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
 			daysInactive,
@@ -187,7 +222,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
 			daysInactive,
 			lastActivity,
-			originalReason: deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
+			originalReason:
+				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
 			recoveryScore: score.score,
 			reasonCode: score.reasonCode,
 			reasonSummary: score.reasonSummary,
@@ -226,7 +262,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const params = new URLSearchParams({
 			properties: this.config.HUBSPOT_RECOVERY_ATTEMPTS_PROPERTY,
 		});
-		const deal = await this.request<HubSpotRecord>(`/crm/v3/objects/deals/${encodeURIComponent(id)}?${params}`);
+		const deal = await this.request<HubSpotRecord>(
+			`/crm/v3/objects/deals/${encodeURIComponent(id)}?${params}`,
+		);
 		const current = Math.max(
 			0,
 			Number.parseInt(
@@ -239,22 +277,41 @@ export class HubSpotCRMProvider implements CRMProvider {
 		});
 	}
 
-	async appendConversationMessage(id: string, message: ConversationMessage): Promise<void> {
-		const prefix = message.direction === "inbound" ? "[OPLERA_INBOUND]" : "[OPLERA_OUTBOUND]";
-		await this.createDealNote(id, `${prefix} ${message.text}`, message.timestamp);
+	async appendConversationMessage(
+		id: string,
+		message: ConversationMessage,
+	): Promise<void> {
+		const prefix =
+			message.direction === "inbound"
+				? "[OPLERA_INBOUND]"
+				: "[OPLERA_OUTBOUND]";
+		await this.createDealNote(
+			id,
+			`${prefix} ${message.text}`,
+			message.timestamp,
+		);
 	}
 
 	async createActivity(id: string, summary: string): Promise<void> {
-		await this.createDealNote(id, `[OPLERA_ACTIVITY] ${summary}`, this.now().toISOString());
+		await this.createDealNote(
+			id,
+			`[OPLERA_ACTIVITY] ${summary}`,
+			this.now().toISOString(),
+		);
 	}
 
 	async resolveMessagingRecipient(id: string): Promise<string> {
 		this.assertAllowedDeal(id);
 		const deal = await this.getDeal(id);
 		if (!deal) throw new Error("hubspot_deal_not_found");
-		const contacts = await this.readAssociated(deal, "contacts", ["phone", "mobilephone"]);
+		const contacts = await this.readAssociated(deal, "contacts", [
+			"phone",
+			"mobilephone",
+		]);
 		const contact = contacts[0];
-		const phone = normalizePhone(contact?.properties.mobilephone || contact?.properties.phone || "");
+		const phone = normalizePhone(
+			contact?.properties.mobilephone || contact?.properties.phone || "",
+		);
 		if (!phone) throw new Error("hubspot_contact_phone_missing");
 		return phone;
 	}
@@ -264,7 +321,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const matches: string[] = [];
 		for (const dealId of this.config.HUBSPOT_DEAL_IDS) {
 			try {
-				if ((await this.resolveMessagingRecipient(dealId)) === normalized) matches.push(dealId);
+				if ((await this.resolveMessagingRecipient(dealId)) === normalized)
+					matches.push(dealId);
 			} catch (error) {
 				pilotLog("warn", "hubspot_phone_resolution_skipped", {
 					deal_id: dealId,
@@ -272,12 +330,14 @@ export class HubSpotCRMProvider implements CRMProvider {
 				});
 			}
 		}
-		if (matches.length > 1) throw new Error("pilot_phone_matches_multiple_deals");
+		if (matches.length > 1)
+			throw new Error("pilot_phone_matches_multiple_deals");
 		return matches[0] ?? null;
 	}
 
 	private assertAllowedDeal(id: string): void {
-		if (!this.config.HUBSPOT_DEAL_IDS.includes(id)) throw new Error("pilot_deal_not_allowlisted");
+		if (!this.config.HUBSPOT_DEAL_IDS.includes(id))
+			throw new Error("pilot_deal_not_allowlisted");
 	}
 
 	private async getDeal(id: string): Promise<HubSpotRecord | null> {
@@ -301,31 +361,70 @@ export class HubSpotCRMProvider implements CRMProvider {
 				`/crm/v3/objects/deals/${encodeURIComponent(id)}?${params}`,
 			);
 		} catch (error) {
-			if (error instanceof Error && error.message.includes("hubspot_http_404")) return null;
+			if (error instanceof Error && error.message.includes("hubspot_http_404"))
+				return null;
 			throw error;
 		}
 	}
 
-	private async readActivities(deal: HubSpotRecord): Promise<NormalizedActivity[]> {
-		const definitions: Array<{ type: NormalizedActivity["type"]; properties: string[] }> = [
+	private async readActivities(
+		deal: HubSpotRecord,
+	): Promise<NormalizedActivity[]> {
+		const definitions: Array<{
+			type: NormalizedActivity["type"];
+			properties: string[];
+		}> = [
 			{ type: "notes", properties: ["hs_timestamp", "hs_note_body"] },
-			{ type: "calls", properties: ["hs_timestamp", "hs_call_body", "hs_call_direction", "hs_call_status"] },
-			{ type: "emails", properties: ["hs_timestamp", "hs_email_text", "hs_email_subject", "hs_email_direction"] },
-			{ type: "meetings", properties: ["hs_timestamp", "hs_meeting_body", "hs_meeting_title", "hs_meeting_outcome"] },
+			{
+				type: "calls",
+				properties: [
+					"hs_timestamp",
+					"hs_call_body",
+					"hs_call_direction",
+					"hs_call_status",
+				],
+			},
+			{
+				type: "emails",
+				properties: [
+					"hs_timestamp",
+					"hs_email_text",
+					"hs_email_subject",
+					"hs_email_direction",
+				],
+			},
+			{
+				type: "meetings",
+				properties: [
+					"hs_timestamp",
+					"hs_meeting_body",
+					"hs_meeting_title",
+					"hs_meeting_outcome",
+				],
+			},
 		];
 		const output: NormalizedActivity[] = [];
 		for (const definition of definitions) {
-			const records = await this.readAssociated(deal, definition.type, definition.properties);
+			const records = await this.readAssociated(
+				deal,
+				definition.type,
+				definition.properties,
+			);
 			for (const record of records) {
 				output.push({
 					type: definition.type,
-					timestamp: safeDate(record.properties.hs_timestamp, record.updatedAt ?? record.createdAt ?? this.now().toISOString()),
+					timestamp: safeDate(
+						record.properties.hs_timestamp,
+						record.updatedAt ?? record.createdAt ?? this.now().toISOString(),
+					),
 					text: activityText(definition.type, record),
 					direction: activityDirection(definition.type, record),
 				});
 			}
 		}
-		return output.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+		return output.sort(
+			(a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
+		);
 	}
 
 	private async readAssociated(
@@ -333,7 +432,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 		type: string,
 		properties: string[],
 	): Promise<HubSpotRecord[]> {
-		const ids = deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
+		const ids =
+			deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
 		if (!ids.length) return [];
 		const results: HubSpotRecord[] = [];
 		for (let index = 0; index < ids.length; index += 100) {
@@ -342,7 +442,10 @@ export class HubSpotCRMProvider implements CRMProvider {
 				`/crm/v3/objects/${encodeURIComponent(type)}/batch/read`,
 				{
 					method: "POST",
-					body: JSON.stringify({ properties, inputs: chunk.map((id) => ({ id })) }),
+					body: JSON.stringify({
+						properties,
+						inputs: chunk.map((id) => ({ id })),
+					}),
 				},
 			);
 			results.push(...response.results);
@@ -350,14 +453,21 @@ export class HubSpotCRMProvider implements CRMProvider {
 		return results;
 	}
 
-	private async patchDeal(id: string, properties: Record<string, string>): Promise<void> {
+	private async patchDeal(
+		id: string,
+		properties: Record<string, string>,
+	): Promise<void> {
 		await this.request(`/crm/v3/objects/deals/${encodeURIComponent(id)}`, {
 			method: "PATCH",
 			body: JSON.stringify({ properties }),
 		});
 	}
 
-	private async createDealNote(id: string, body: string, timestamp: string): Promise<void> {
+	private async createDealNote(
+		id: string,
+		body: string,
+		timestamp: string,
+	): Promise<void> {
 		this.assertAllowedDeal(id);
 		await this.request("/crm/v3/objects/notes", {
 			method: "POST",
@@ -369,7 +479,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 						types: [
 							{
 								associationCategory: "HUBSPOT_DEFINED",
-								associationTypeId: this.config.HUBSPOT_NOTE_TO_DEAL_ASSOCIATION_TYPE_ID,
+								associationTypeId:
+									this.config.HUBSPOT_NOTE_TO_DEAL_ASSOCIATION_TYPE_ID,
 							},
 						],
 					},
@@ -378,7 +489,10 @@ export class HubSpotCRMProvider implements CRMProvider {
 		});
 	}
 
-	private async request<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+	private async request<T = unknown>(
+		path: string,
+		init: RequestInit = {},
+	): Promise<T> {
 		const response = await this.fetcher(`${this.apiBase}${path}`, {
 			...init,
 			headers: {

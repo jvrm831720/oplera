@@ -21,12 +21,15 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 	constructor(
 		private readonly config: PilotConfig,
 		private readonly state: PilotStateStore,
-		private readonly recipientResolver: (opportunityId: string) => Promise<string>,
+		private readonly recipientResolver: (
+			opportunityId: string,
+		) => Promise<string>,
 		private readonly fetcher: FetchLike = fetch,
 	) {}
 
 	async sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
-		if (input.channel !== "whatsapp") throw new Error("pilot_provider_only_supports_whatsapp");
+		if (input.channel !== "whatsapp")
+			throw new Error("pilot_provider_only_supports_whatsapp");
 		const recipient = await this.resolveAllowedRecipient(input.opportunityId);
 		return this.sendWithIdempotency(input.idempotencyKey, recipient, {
 			messaging_product: "whatsapp",
@@ -42,7 +45,8 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 		contactName: string;
 	}): Promise<SendMessageResult> {
 		const recipient = await this.resolveAllowedRecipient(input.opportunityId);
-		const firstName = input.contactName.trim().split(/\s+/)[0] || input.contactName;
+		const firstName =
+			input.contactName.trim().split(/\s+/)[0] || input.contactName;
 		return this.sendWithIdempotency(input.idempotencyKey, recipient, {
 			messaging_product: "whatsapp",
 			to: recipient,
@@ -62,28 +66,40 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 
 	verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
 		if (!signature?.startsWith("sha256=")) return false;
-		const expected = `sha256=${createHmac("sha256", this.config.WHATSAPP_APP_SECRET)
+		const expected = `sha256=${createHmac(
+			"sha256",
+			this.config.WHATSAPP_APP_SECRET,
+		)
 			.update(rawBody)
 			.digest("hex")}`;
 		const actualBuffer = Buffer.from(signature);
 		const expectedBuffer = Buffer.from(expected);
-		return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+		return (
+			actualBuffer.length === expectedBuffer.length &&
+			timingSafeEqual(actualBuffer, expectedBuffer)
+		);
 	}
 
 	verifyWebhookChallenge(url: URL): string | null {
 		if (
 			url.searchParams.get("hub.mode") === "subscribe" &&
-			url.searchParams.get("hub.verify_token") === this.config.WHATSAPP_VERIFY_TOKEN
+			url.searchParams.get("hub.verify_token") ===
+				this.config.WHATSAPP_VERIFY_TOKEN
 		) {
 			return url.searchParams.get("hub.challenge");
 		}
 		return null;
 	}
 
-	private async resolveAllowedRecipient(opportunityId: string): Promise<string> {
-		const recipient = normalizePhone(await this.recipientResolver(opportunityId));
+	private async resolveAllowedRecipient(
+		opportunityId: string,
+	): Promise<string> {
+		const recipient = normalizePhone(
+			await this.recipientResolver(opportunityId),
+		);
 		const allowlist = this.config.PILOT_PHONE_ALLOWLIST.map(normalizePhone);
-		if (!recipient || !allowlist.includes(recipient)) throw new Error("pilot_phone_not_allowlisted");
+		if (!recipient || !allowlist.includes(recipient))
+			throw new Error("pilot_phone_not_allowlisted");
 		return recipient;
 	}
 
@@ -101,7 +117,8 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 			pilotLog("info", "whatsapp_dry_run", { idempotency_key: key, recipient });
 			return result;
 		}
-		if (this.config.PILOT_KILL_SWITCH) throw new Error("pilot_kill_switch_enabled");
+		if (this.config.PILOT_KILL_SWITCH)
+			throw new Error("pilot_kill_switch_enabled");
 
 		const response = await this.fetcher(
 			`https://graph.facebook.com/${this.config.WHATSAPP_GRAPH_VERSION}/${encodeURIComponent(
@@ -127,7 +144,9 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 			});
 			throw new Error(`whatsapp_http_${response.status}`);
 		}
-		const parsed = (text ? JSON.parse(text) : {}) as { messages?: Array<{ id?: string }> };
+		const parsed = (text ? JSON.parse(text) : {}) as {
+			messages?: Array<{ id?: string }>;
+		};
 		const providerMessageId = parsed.messages?.[0]?.id;
 		if (!providerMessageId) throw new Error("whatsapp_message_id_missing");
 		const result = { providerMessageId, accepted: true };
@@ -140,7 +159,9 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 	}
 }
 
-export function parseWhatsAppWebhook(rawBody: string): WhatsAppInboundMessage[] {
+export function parseWhatsAppWebhook(
+	rawBody: string,
+): WhatsAppInboundMessage[] {
 	const payload = JSON.parse(rawBody) as {
 		entry?: Array<{
 			changes?: Array<{
@@ -160,7 +181,13 @@ export function parseWhatsAppWebhook(rawBody: string): WhatsAppInboundMessage[] 
 	for (const entry of payload.entry ?? []) {
 		for (const change of entry.changes ?? []) {
 			for (const message of change.value?.messages ?? []) {
-				if (message.type !== "text" || !message.id || !message.from || !message.text?.body) continue;
+				if (
+					message.type !== "text" ||
+					!message.id ||
+					!message.from ||
+					!message.text?.body
+				)
+					continue;
 				const timestampSeconds = Number.parseInt(message.timestamp ?? "", 10);
 				messages.push({
 					id: message.id,

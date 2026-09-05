@@ -20,16 +20,33 @@ describe("HubSpot CRM provider", () => {
 	});
 
 	test("rejects a deal outside the pilot allowlist", async () => {
-		const provider = new HubSpotCRMProvider(pilotTestConfig(), hubSpotFixtureFetch());
-		await expect(provider.getOpportunityContext("999")).rejects.toThrow("pilot_deal_not_allowlisted");
+		const provider = new HubSpotCRMProvider(
+			pilotTestConfig(),
+			hubSpotFixtureFetch(),
+		);
+		await expect(provider.getOpportunityContext("999")).rejects.toThrow(
+			"pilot_deal_not_allowlisted",
+		);
 	});
 
 	test("writes recovery status and activity back to HubSpot", async () => {
 		const calls: string[] = [];
-		const provider = new HubSpotCRMProvider(pilotTestConfig(), hubSpotFixtureFetch(calls));
+		const provider = new HubSpotCRMProvider(
+			pilotTestConfig(),
+			hubSpotFixtureFetch(calls),
+		);
 		await provider.updateOpportunity("100", "awaiting_reply");
 		await provider.createActivity("100", "pilot activity");
-		expect(calls.some((item) => item.startsWith("PATCH ") && item.includes("/deals/100"))).toBe(true);
-		expect(calls.some((item) => item.startsWith("POST ") && item.endsWith("/crm/v3/objects/notes"))).toBe(true);
+		expect(
+			calls.some(
+				(item) => item.startsWith("PATCH ") && item.includes("/deals/100"),
+			),
+		).toBe(true);
+		expect(
+			calls.some(
+				(item) =>
+					item.startsWith("POST ") && item.endsWith("/crm/v3/objects/notes"),
+			),
+		).toBe(true);
 	});
 });

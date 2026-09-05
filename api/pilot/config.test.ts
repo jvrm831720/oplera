@@ -27,7 +27,10 @@ describe("pilot configuration", () => {
 	});
 
 	test("rejects a missing admin token", () => {
-		const parsed = pilotConfigSchema.safeParse({ ...env, PILOT_ADMIN_TOKEN: "short" });
+		const parsed = pilotConfigSchema.safeParse({
+			...env,
+			PILOT_ADMIN_TOKEN: "short",
+		});
 		expect(parsed.success).toBe(false);
 	});
 });

@@ -45,7 +45,9 @@ export class PilotStateStore {
 
 	getOutbound(key: string): SendMessageResult | null {
 		const row = this.db
-			.query("SELECT result_json, writeback_completed_at FROM pilot_outbound_idempotency WHERE idempotency_key = ?")
+			.query(
+				"SELECT result_json, writeback_completed_at FROM pilot_outbound_idempotency WHERE idempotency_key = ?",
+			)
 			.get(key) as OutboundRow | null;
 		return row ? (JSON.parse(row.result_json) as SendMessageResult) : null;
 	}
@@ -60,7 +62,9 @@ export class PilotStateStore {
 
 	isWritebackComplete(key: string): boolean {
 		const row = this.db
-			.query("SELECT writeback_completed_at FROM pilot_outbound_idempotency WHERE idempotency_key = ?")
+			.query(
+				"SELECT writeback_completed_at FROM pilot_outbound_idempotency WHERE idempotency_key = ?",
+			)
 			.get(key) as Pick<OutboundRow, "writeback_completed_at"> | null;
 		return Boolean(row?.writeback_completed_at);
 	}
@@ -75,7 +79,9 @@ export class PilotStateStore {
 
 	markInboundSeen(messageId: string, now: string): boolean {
 		const result = this.db
-			.query("INSERT OR IGNORE INTO pilot_inbound_idempotency (message_id, created_at) VALUES (?, ?)")
+			.query(
+				"INSERT OR IGNORE INTO pilot_inbound_idempotency (message_id, created_at) VALUES (?, ?)",
+			)
 			.run(messageId, now);
 		return result.changes > 0;
 	}
@@ -111,7 +117,9 @@ export class PilotStateStore {
 
 	consumeApproval(opportunityId: string, now: string): void {
 		this.db
-			.query("UPDATE pilot_approvals SET consumed_at = ? WHERE opportunity_id = ?")
+			.query(
+				"UPDATE pilot_approvals SET consumed_at = ? WHERE opportunity_id = ?",
+			)
 			.run(now, opportunityId);
 	}
 }
