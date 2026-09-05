@@ -8,6 +8,8 @@ export const conversationMessageSchema = z.object({
 	timestamp: z.iso.datetime(),
 });
 
+export type ConversationMessage = z.infer<typeof conversationMessageSchema>;
+
 export const conversationSchema = z.object({
 	id: z.string().trim().min(1).max(120),
 	contactName: z.string().trim().min(1).max(160),
@@ -40,6 +42,9 @@ export const recoveryOpportunitySchema = z.object({
 	lastMessage: z.string(),
 	lastMessageDirection: messageDirectionSchema,
 	lastMessageAt: z.string(),
+	lastInboundMessageAt: z.string().optional(),
+	serviceWindowExpiresAt: z.string().optional(),
+	serviceWindowOpen: z.boolean().nullable(),
 	inactivityDays: z.number().int().nonnegative(),
 	intentSignals: z.array(z.string()),
 	suggestedAction: z.string(),
@@ -94,6 +99,58 @@ const LOSS_PATTERN =
 	/n[aã]o (quero|tenho interesse)|desisti|j[aá] fechei|pare de|cancel/i;
 const WON_PATTERN =
 	/pagamento (feito|realizado)|pix (feito|enviado)|contrato assinado|fechado/i;
+const SERVICE_WINDOW_MS = 24 * 60 * 60 * 1_000;
+
+export function resolveServiceWindow(
+	messages: ConversationMessage[],
+	referenceDate: Date,
+): Pick<
+	RecoveryOpportunity,
+	| "lastInboundMessageAt"
+	| "serviceWindowExpiresAt"
+	| "serviceWindowOpen"
+	| "deliveryMode"
+> {
+	const lastInbound = [...messages]
+		.filter((message) => message.direction === "inbound")
+		.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+		.at(-1);
+
+	if (!lastInbound) {
+		return {
+			serviceWindowOpen: null,
+			deliveryMode: "manual_review",
+		};
+	}
+
+	const lastInboundAt = Date.parse(lastInbound.timestamp);
+	const referenceTime = referenceDate.getTime();
+	if (
+		Number.isNaN(lastInboundAt) ||
+		Number.isNaN(referenceTime) ||
+		lastInboundAt > referenceTime
+	) {
+		return {
+			lastInboundMessageAt: lastInbound.timestamp,
+			serviceWindowOpen: null,
+			deliveryMode: "manual_review",
+		};
+	}
+
+	const serviceWindowExpiresAt = new Date(
+		lastInboundAt + SERVICE_WINDOW_MS,
+	).toISOString();
+	const serviceWindowOpen = referenceTime - lastInboundAt <= SERVICE_WINDOW_MS;
+
+	return {
+		lastInboundMessageAt: lastInbound.timestamp,
+		serviceWindowExpiresAt,
+		serviceWindowOpen,
+		deliveryMode: serviceWindowOpen
+			? "free_form"
+			: "approved_template_required",
+	};
+}
 
 function startOfDay(date: Date): number {
 	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
@@ -183,8 +240,7 @@ function analyzeConversation(
 	if (score < 35) return null;
 
 	const priority = score >= 75 ? "high" : score >= 55 ? "medium" : "low";
-	const deliveryMode =
-		inactivityDays > 1 ? "approved_template_required" : "free_form";
+	const serviceWindow = resolveServiceWindow(messages, referenceDate);
 	const unanswered = last.direction === "inbound";
 	const reason = unanswered
 		? `Cliente demonstrou ${intentSignals.join(", ") || "interesse"} e ficou sem resposta.`
@@ -209,6 +265,7 @@ function analyzeConversation(
 		lastMessage: last.text,
 		lastMessageDirection: last.direction,
 		lastMessageAt: last.timestamp,
+		...serviceWindow,
 		inactivityDays,
 		intentSignals,
 		suggestedAction:
@@ -216,7 +273,6 @@ function analyzeConversation(
 				? "Revisar e retomar hoje"
 				: "Adicionar à fila de recuperação",
 		suggestedMessage: suggestedMessageFor(opportunityBase),
-		deliveryMode,
 		conversation: messages.slice(-8),
 	};
 }
