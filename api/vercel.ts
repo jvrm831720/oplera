@@ -9,7 +9,9 @@ export default async function handler(request: Request): Promise<Response> {
 	const requestedPath = url.searchParams.get("__path");
 
 	if (requestedPath !== null) {
-		url.pathname = `/${requestedPath.replace(/^\\/+/, "")}`;
+		url.pathname = requestedPath.startsWith("/")
+			? requestedPath
+			: `/${requestedPath}`;
 		url.searchParams.delete("__path");
 	}
 
