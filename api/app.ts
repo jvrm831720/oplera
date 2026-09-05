@@ -1,4 +1,5 @@
 import { withRuntime } from "@decocms/runtime";
+import { handleAutonomyHttp } from "./autonomy/http.ts";
 import { prompts } from "./prompts/index.ts";
 import {
 	readRecoveryAppHtml,
@@ -9,10 +10,6 @@ import { type Env, StateSchema } from "./types/env.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: runtime.fetch signature compatibility
 type Fetcher = (req: Request, ...args: any[]) => Response | Promise<Response>;
-
-// ---------------------------------------------------------------------------
-// Logging helpers
-// ---------------------------------------------------------------------------
 
 const colors = {
 	reset: "\x1b[0m",
@@ -40,10 +37,6 @@ function getMethodColor(method: string): string {
 	return colors[method as keyof typeof colors] || colors.reset;
 }
 
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
-
 function withLogging(fetcher: Fetcher): Fetcher {
 	return async (req: Request, ...args) => {
 		const start = performance.now();
@@ -51,13 +44,11 @@ function withLogging(fetcher: Fetcher): Fetcher {
 		const path = new URL(req.url).pathname;
 		const requestId =
 			req.headers.get("x-request-id") || crypto.randomUUID().slice(0, 8);
-
 		const methodColor = getMethodColor(method);
 		const reqIdStr = `${colors.requestId}${requestId.slice(0, 8)}${colors.reset}`;
 		console.log(
 			`${colors.dim}<-${colors.reset} ${methodColor}${method}${colors.reset} ${path} ${reqIdStr}`,
 		);
-
 		try {
 			const response = await fetcher(req, ...args);
 			const duration = (performance.now() - start).toFixed(1);
@@ -91,6 +82,9 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 			});
 		}
 
+		const autonomyResponse = await handleAutonomyHttp(req);
+		if (autonomyResponse) return autonomyResponse;
+
 		if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
 			return new Response("Not Found", { status: 404 });
 		}
@@ -104,10 +98,6 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 		return fetcher(req, ...args);
 	};
 }
-
-// ---------------------------------------------------------------------------
-// App factory
-// ---------------------------------------------------------------------------
 
 const runtime = withRuntime<Env, typeof StateSchema>({
 	configuration: {
