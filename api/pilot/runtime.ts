@@ -62,6 +62,14 @@ function fingerprintFor(input: {
 		.digest("hex");
 }
 
+function policyApprovalCanBeSatisfied(decision: PolicyDecision): boolean {
+	return (
+		decision.result === "requires_approval" &&
+		decision.reasons.length === 1 &&
+		decision.reasons[0] === "whatsapp_service_window_unknown"
+	);
+}
+
 export class PilotRuntime {
 	readonly engine: AutonomousRecoveryEngine;
 
@@ -125,6 +133,9 @@ export class PilotRuntime {
 			templateName: this.config.WHATSAPP_TEMPLATE_NAME,
 		});
 		const approval = this.state.getApproval(candidate.id, fingerprint);
+		const requiresFirstContactApproval = candidate.attempt === 0 && !approval;
+		const requiresPolicyApproval =
+			policy.result === "requires_approval" && !approval;
 		return {
 			candidate,
 			plan,
@@ -135,7 +146,8 @@ export class PilotRuntime {
 			approval: approval
 				? { approvedBy: approval.approved_by, approvedAt: approval.approved_at }
 				: null,
-			requiresHumanApproval: candidate.attempt === 0 && !approval,
+			requiresHumanApproval:
+				requiresFirstContactApproval || requiresPolicyApproval,
 		};
 	}
 
@@ -146,25 +158,37 @@ export class PilotRuntime {
 	): Promise<PilotPreview> {
 		const preview = await this.preview(opportunityId, now);
 		this.state.approve(opportunityId, preview.fingerprint, approvedBy, now);
-		pilotLog("info", "pilot_first_contact_approved", {
+		pilotLog("info", "pilot_action_approved", {
 			opportunity_id: opportunityId,
 			approved_by: approvedBy,
 			fingerprint: preview.fingerprint,
+			policy_result: preview.policy.result,
 		});
 		return this.preview(opportunityId, now);
 	}
 
 	async execute(opportunityId: string, now = new Date().toISOString()) {
 		const preview = await this.preview(opportunityId, now);
-		if (preview.policy.result !== "allowed") {
+		if (preview.requiresHumanApproval)
+			throw new Error("pilot_first_contact_approval_required");
+
+		if (preview.policy.result === "blocked") {
 			return {
 				status: "policy_blocked" as const,
 				policy: preview.policy,
 				preview,
 			};
 		}
-		if (preview.requiresHumanApproval)
-			throw new Error("pilot_first_contact_approval_required");
+		if (
+			preview.policy.result === "requires_approval" &&
+			(!preview.approval || !policyApprovalCanBeSatisfied(preview.policy))
+		) {
+			return {
+				status: "policy_requires_approval" as const,
+				policy: preview.policy,
+				preview,
+			};
+		}
 
 		const idempotencyKey = `pilot:${preview.candidate.id}:${preview.plan.strategy}:${preview.candidate.attempt + 1}:${preview.messageMode}`;
 		const result =
