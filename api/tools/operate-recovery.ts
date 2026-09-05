@@ -10,7 +10,9 @@ export const operateRecoveryInputSchema = z.object({
 });
 
 export type OperateRecoveryInput = z.infer<typeof operateRecoveryInputSchema>;
-export type OperateRecoveryOutput = z.infer<typeof operatorConsoleSnapshotSchema>;
+export type OperateRecoveryOutput = z.infer<
+	typeof operatorConsoleSnapshotSchema
+>;
 
 export const operateRecoveryTool = (_env: Env) =>
 	createTool({
@@ -27,7 +29,9 @@ export const operateRecoveryTool = (_env: Env) =>
 			openWorldHint: false,
 		},
 		execute: async ({ context }) => {
-			const reference = context.reference_date ? new Date(context.reference_date) : new Date();
+			const reference = context.reference_date
+				? new Date(context.reference_date)
+				: new Date();
 			return buildDemoOperatorConsole(reference);
 		},
 	});

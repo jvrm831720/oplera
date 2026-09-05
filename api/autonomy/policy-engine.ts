@@ -57,7 +57,10 @@ export interface PolicyInput {
 	requestedDiscountPercent?: number;
 }
 
-function localClock(date: Date, timeZone: string): { weekday: number; hour: number } {
+function localClock(
+	date: Date,
+	timeZone: string,
+): { weekday: number; hour: number } {
 	const weekdayName = new Intl.DateTimeFormat("en-US", {
 		timeZone,
 		weekday: "short",
@@ -77,7 +80,10 @@ function block(reason: string): PolicyDecision {
 	return { result: "blocked", reasons: [reason] };
 }
 
-function approval(reason: string, extra: Partial<PolicyDecision> = {}): PolicyDecision {
+function approval(
+	reason: string,
+	extra: Partial<PolicyDecision> = {},
+): PolicyDecision {
 	return { result: "requires_approval", reasons: [reason], ...extra };
 }
 
@@ -121,16 +127,24 @@ export function evaluateRecoveryPolicy(input: PolicyInput): PolicyDecision {
 				return {
 					result: "blocked",
 					reasons: ["minimum_interval"],
-					nextEligibleAt: new Date(lastContact + minimumIntervalMs).toISOString(),
+					nextEligibleAt: new Date(
+						lastContact + minimumIntervalMs,
+					).toISOString(),
 				};
 			}
 		}
 	}
 
-	if (input.action === "mention_pricing" && !input.policy.commercial.aiMayMentionPricing) {
+	if (
+		input.action === "mention_pricing" &&
+		!input.policy.commercial.aiMayMentionPricing
+	) {
 		return approval("pricing_requires_approval");
 	}
-	if (input.action === "custom_proposal" && input.policy.commercial.customProposalRequiresHuman) {
+	if (
+		input.action === "custom_proposal" &&
+		input.policy.commercial.customProposalRequiresHuman
+	) {
 		return approval("custom_proposal_requires_approval");
 	}
 	if (

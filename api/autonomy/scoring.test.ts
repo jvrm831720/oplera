@@ -89,8 +89,14 @@ describe("recovery scoring", () => {
 			optedOut: false,
 			activeHumanConversation: false,
 		};
-		const capped = scoreRecoveryCandidate({ ...shared, semanticContribution: 999 });
-		const explicitFive = scoreRecoveryCandidate({ ...shared, semanticContribution: 5 });
+		const capped = scoreRecoveryCandidate({
+			...shared,
+			semanticContribution: 999,
+		});
+		const explicitFive = scoreRecoveryCandidate({
+			...shared,
+			semanticContribution: 5,
+		});
 		expect(capped.score).toBe(explicitFive.score);
 	});
 });

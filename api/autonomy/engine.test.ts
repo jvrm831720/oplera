@@ -9,7 +9,9 @@ describe("autonomous recovery lifecycle", () => {
 	test("policy-gates execution and records an auditable send", async () => {
 		const reference = new Date("2026-09-07T15:00:00.000Z");
 		const candidates = demoCandidates(reference);
-		const candidate = candidates.find((item) => item.id === "opp-proposal-ghosted");
+		const candidate = candidates.find(
+			(item) => item.id === "opp-proposal-ghosted",
+		);
 		if (!candidate) throw new Error("proposal demo candidate missing");
 		candidate.dueAt = reference.toISOString();
 		const crm = new DemoCRMProvider([candidate]);
@@ -22,14 +24,24 @@ describe("autonomous recovery lifecycle", () => {
 		);
 
 		await engine.discover();
-		const scheduled = await engine.schedule(candidate.id, reference.toISOString());
+		const scheduled = await engine.schedule(
+			candidate.id,
+			reference.toISOString(),
+		);
 		expect(scheduled?.status).toBe("pending");
-		const result = await engine.dispatchDue("worker-a", reference.toISOString());
+		const result = await engine.dispatchDue(
+			"worker-a",
+			reference.toISOString(),
+		);
 		expect(result.executed).toBe(1);
 		expect(result.blocked).toBe(0);
 		expect(queue.list()[0]?.status).toBe("succeeded");
-		expect(engine.events.some((item) => item.action === "policy_checked")).toBe(true);
-		expect(engine.events.some((item) => item.action === "recovery_message_sent")).toBe(true);
+		expect(engine.events.some((item) => item.action === "policy_checked")).toBe(
+			true,
+		);
+		expect(
+			engine.events.some((item) => item.action === "recovery_message_sent"),
+		).toBe(true);
 		const updated = await crm.getOpportunityContext(candidate.id);
 		expect(updated?.status).toBe("awaiting_reply");
 	});

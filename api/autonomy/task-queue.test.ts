@@ -49,7 +49,13 @@ describe("memory task queue", () => {
 		const queue = new MemoryTaskQueue([task()]);
 		queue.claimDue("worker-a", NOW);
 		queue.markRunning("task-1", "worker-a");
-		const failed = queue.fail("task-1", "worker-a", NOW, "provider_timeout", 60_000);
+		const failed = queue.fail(
+			"task-1",
+			"worker-a",
+			NOW,
+			"provider_timeout",
+			60_000,
+		);
 		expect(failed.status).toBe("pending");
 		expect(failed.lastError).toBe("provider_timeout");
 		expect(failed.dueAt).toBe("2026-09-05T15:01:00.000Z");

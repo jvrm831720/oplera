@@ -11,7 +11,9 @@ interface WorkflowExport {
 describe("n8n workflow exports", () => {
 	test("ships nine valid disabled workflow exports without credentials", async () => {
 		const directory = new URL("../../n8n/workflows/", import.meta.url);
-		const files = (await readdir(directory)).filter((name) => name.endsWith(".json"));
+		const files = (await readdir(directory)).filter((name) =>
+			name.endsWith(".json"),
+		);
 		expect(files).toHaveLength(9);
 
 		for (const file of files) {
@@ -21,7 +23,9 @@ describe("n8n workflow exports", () => {
 			expect(workflow.nodes.length).toBeGreaterThanOrEqual(2);
 			expect(workflow.connections).toBeDefined();
 			expect(workflow.active).toBe(false);
-			expect(raw).not.toMatch(/api[_-]?key|authorization\s*:\s*bearer|client_secret/i);
+			expect(raw).not.toMatch(
+				/api[_-]?key|authorization\s*:\s*bearer|client_secret/i,
+			);
 		}
 	});
 });

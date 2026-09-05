@@ -1,17 +1,46 @@
 {
-  "name": "Oplera 05 — Outreach",
-  "nodes": [
-    { "parameters": {}, "id": "05-manual-trigger", "name": "Manual Trigger", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0] },
-    {
-      "parameters": {
-        "method": "POST", "url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/agent-step",
-        "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "content-type", "value": "application/json" }] },
-        "sendBody": true, "contentType": "raw", "rawContentType": "application/json", "body": "{\"step\":\"outreach\"}", "options": {}
-      },
-      "id": "05-oplera-outreach", "name": "Run Outreach", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [260, 0]
-    }
-  ],
-  "connections": { "Manual Trigger": { "main": [[{ "node": "Run Outreach", "type": "main", "index": 0 }]] } },
-  "pinData": {}, "active": false, "settings": { "executionOrder": "v1" },
-  "versionId": "00000000-0000-4000-8000-000000000005", "meta": { "templateCredsSetupCompleted": true }, "tags": []
+	"name": "Oplera 05 — Outreach",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "05-manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/agent-step",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "content-type", "value": "application/json" }
+					]
+				},
+				"sendBody": true,
+				"contentType": "raw",
+				"rawContentType": "application/json",
+				"body": "{\"step\":\"outreach\"}",
+				"options": {}
+			},
+			"id": "05-oplera-outreach",
+			"name": "Run Outreach",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [260, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Run Outreach", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "00000000-0000-4000-8000-000000000005",
+	"meta": { "templateCredsSetupCompleted": true },
+	"tags": []
 }

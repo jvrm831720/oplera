@@ -1,22 +1,52 @@
 {
-  "name": "Oplera 06 — Incoming Reply",
-  "nodes": [
-    {
-      "parameters": { "httpMethod": "POST", "path": "oplera-recovery-reply-demo", "responseMode": "lastNode", "options": {} },
-      "id": "06-reply-webhook", "name": "Incoming Reply Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1, "position": [0, 0],
-      "webhookId": "00000000-0000-4000-8000-000000000006"
-    },
-    {
-      "parameters": {
-        "method": "POST", "url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/replies",
-        "sendHeaders": true, "headerParameters": { "parameters": [{ "name": "content-type", "value": "application/json" }] },
-        "sendBody": true, "contentType": "raw", "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ opportunity_id: $json.body?.opportunity_id ?? $json.opportunity_id, text: $json.body?.text ?? $json.text }) }}", "options": {}
-      },
-      "id": "06-oplera-reply", "name": "Observe Reply", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [280, 0]
-    }
-  ],
-  "connections": { "Incoming Reply Webhook": { "main": [[{ "node": "Observe Reply", "type": "main", "index": 0 }]] } },
-  "pinData": {}, "active": false, "settings": { "executionOrder": "v1" },
-  "versionId": "00000000-0000-4000-8000-000000000016", "meta": { "templateCredsSetupCompleted": true }, "tags": []
+	"name": "Oplera 06 — Incoming Reply",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "oplera-recovery-reply-demo",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "06-reply-webhook",
+			"name": "Incoming Reply Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"webhookId": "00000000-0000-4000-8000-000000000006"
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/replies",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "content-type", "value": "application/json" }
+					]
+				},
+				"sendBody": true,
+				"contentType": "raw",
+				"rawContentType": "application/json",
+				"body": "={{ JSON.stringify({ opportunity_id: $json.body?.opportunity_id ?? $json.opportunity_id, text: $json.body?.text ?? $json.text }) }}",
+				"options": {}
+			},
+			"id": "06-oplera-reply",
+			"name": "Observe Reply",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [280, 0]
+		}
+	],
+	"connections": {
+		"Incoming Reply Webhook": {
+			"main": [[{ "node": "Observe Reply", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "00000000-0000-4000-8000-000000000016",
+	"meta": { "templateCredsSetupCompleted": true },
+	"tags": []
 }

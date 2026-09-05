@@ -25,19 +25,27 @@ function classifyReason(signals: RecoverySignals): RecoveryReasonCode {
 	if (signals.proposalSent) return "proposal_ghosted";
 	if (signals.lostReason === "timing") return "lost_timing";
 	if (signals.sellerDropped) return "seller_dropped";
-	if (signals.lostReason === "budget" || signals.knownObjection) return "budget_objection";
-	if (signals.explicitBuyingQuestion || signals.previousEngagement) return "high_intent_abandoned";
+	if (signals.lostReason === "budget" || signals.knownObjection)
+		return "budget_objection";
+	if (signals.explicitBuyingQuestion || signals.previousEngagement)
+		return "high_intent_abandoned";
 	return "stale_low_intent";
 }
 
 function summaryFor(reasonCode: RecoveryReasonCode): string {
 	const summaries: Record<RecoveryReasonCode, string> = {
-		proposal_ghosted: "A proposta foi enviada, houve engajamento comercial e o processo ficou sem próximo passo.",
-		lost_timing: "A oportunidade parou por timing e já pode ser revisitada sem reconstruir o pipeline do zero.",
-		seller_dropped: "O cliente demonstrou intenção, mas o fluxo comercial foi interrompido pelo lado vendedor.",
-		budget_objection: "Existe objeção de orçamento conhecida e contexto suficiente para uma retomada controlada.",
-		high_intent_abandoned: "Há sinais explícitos de compra ou engajamento anterior sem resolução comercial.",
-		stale_low_intent: "A oportunidade está parada, mas os sinais de intenção ainda são fracos.",
+		proposal_ghosted:
+			"A proposta foi enviada, houve engajamento comercial e o processo ficou sem próximo passo.",
+		lost_timing:
+			"A oportunidade parou por timing e já pode ser revisitada sem reconstruir o pipeline do zero.",
+		seller_dropped:
+			"O cliente demonstrou intenção, mas o fluxo comercial foi interrompido pelo lado vendedor.",
+		budget_objection:
+			"Existe objeção de orçamento conhecida e contexto suficiente para uma retomada controlada.",
+		high_intent_abandoned:
+			"Há sinais explícitos de compra ou engajamento anterior sem resolução comercial.",
+		stale_low_intent:
+			"A oportunidade está parada, mas os sinais de intenção ainda são fracos.",
 	};
 	return summaries[reasonCode];
 }
@@ -46,7 +54,9 @@ function summaryFor(reasonCode: RecoveryReasonCode): string {
  * V0.4 deterministic score. The optional semantic contribution is deliberately
  * capped to +/-5 points so an AI provider cannot manufacture the final score.
  */
-export function scoreRecoveryCandidate(input: RecoveryScoreInput): RecoveryScoreResult {
+export function scoreRecoveryCandidate(
+	input: RecoveryScoreInput,
+): RecoveryScoreResult {
 	const reasonCode = classifyReason(input.signals);
 	const factors: Record<string, number> = { base: 20 };
 
@@ -70,14 +80,16 @@ export function scoreRecoveryCandidate(input: RecoveryScoreInput): RecoveryScore
 	if (input.activeHumanConversation) factors.activeHumanConversation = -25;
 
 	const semanticContribution = clamp(input.semanticContribution ?? 0, -5, 5);
-	if (semanticContribution !== 0) factors.semanticContribution = semanticContribution;
+	if (semanticContribution !== 0)
+		factors.semanticContribution = semanticContribution;
 
 	if (input.optedOut) {
 		return {
 			recoverable: false,
 			score: 0,
 			reasonCode,
-			reasonSummary: "Contato com opt-out ativo. A oportunidade não pode ser trabalhada autonomamente.",
+			reasonSummary:
+				"Contato com opt-out ativo. A oportunidade não pode ser trabalhada autonomamente.",
 			factors: { ...factors, optOut: -100 },
 		};
 	}

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ConversationMessage } from "../domain/recovery.ts";
-import { defaultRecoveryPolicy, evaluateRecoveryPolicy } from "./policy-engine.ts";
+import {
+	defaultRecoveryPolicy,
+	evaluateRecoveryPolicy,
+} from "./policy-engine.ts";
 
 const MONDAY_NOON = "2026-09-07T15:00:00.000Z";
 
@@ -14,7 +17,9 @@ function conversation(lastInboundAt: string): ConversationMessage[] {
 	];
 }
 
-function input(overrides: Partial<Parameters<typeof evaluateRecoveryPolicy>[0]> = {}) {
+function input(
+	overrides: Partial<Parameters<typeof evaluateRecoveryPolicy>[0]> = {},
+) {
 	return {
 		policy: defaultRecoveryPolicy,
 		action: "send_message" as const,
@@ -39,7 +44,10 @@ describe("policy engine", () => {
 		const decision = evaluateRecoveryPolicy(
 			input({ now: "2026-09-07T02:00:00.000Z" }),
 		);
-		expect(decision).toMatchObject({ result: "blocked", reasons: ["blocked_by_hours"] });
+		expect(decision).toMatchObject({
+			result: "blocked",
+			reasons: ["blocked_by_hours"],
+		});
 	});
 
 	test("blocks opt-out", () => {
@@ -55,12 +63,16 @@ describe("policy engine", () => {
 	});
 
 	test("blocks when a human conversation is active", () => {
-		const decision = evaluateRecoveryPolicy(input({ activeHumanConversation: true }));
+		const decision = evaluateRecoveryPolicy(
+			input({ activeHumanConversation: true }),
+		);
 		expect(decision.reasons).toContain("active_human_conversation");
 	});
 
 	test("requires approval for an autonomous custom proposal", () => {
-		const decision = evaluateRecoveryPolicy(input({ action: "custom_proposal" }));
+		const decision = evaluateRecoveryPolicy(
+			input({ action: "custom_proposal" }),
+		);
 		expect(decision).toMatchObject({
 			result: "requires_approval",
 			reasons: ["custom_proposal_requires_approval"],

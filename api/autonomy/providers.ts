@@ -66,7 +66,9 @@ export class DemoCRMProvider implements CRMProvider {
 	}
 
 	async listRecoveryCandidates(): Promise<RecoveryCandidate[]> {
-		return [...this.opportunities.values()].map((item) => structuredClone(item));
+		return [...this.opportunities.values()].map((item) =>
+			structuredClone(item),
+		);
 	}
 
 	async getOpportunityContext(id: string): Promise<RecoveryCandidate | null> {
@@ -81,7 +83,8 @@ export class DemoCRMProvider implements CRMProvider {
 	}
 
 	async createActivity(id: string, summary: string): Promise<void> {
-		if (!this.opportunities.has(id)) throw new Error(`unknown opportunity ${id}`);
+		if (!this.opportunities.has(id))
+			throw new Error(`unknown opportunity ${id}`);
 		this.activities.push({ opportunityId: id, summary });
 	}
 }

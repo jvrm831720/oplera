@@ -28,7 +28,12 @@ export class MemoryTaskQueue {
 		return [...this.tasks.values()].map(cloneTask);
 	}
 
-	claimDue(workerId: string, nowIso: string, limit = 10, leaseMs = 60_000): RecoveryTask[] {
+	claimDue(
+		workerId: string,
+		nowIso: string,
+		limit = 10,
+		leaseMs = 60_000,
+	): RecoveryTask[] {
 		const now = Date.parse(nowIso);
 		if (Number.isNaN(now)) throw new Error("nowIso must be a valid ISO date");
 
@@ -36,7 +41,10 @@ export class MemoryTaskQueue {
 			.filter((task) => {
 				if (Date.parse(task.dueAt) > now) return false;
 				if (task.status === "pending") return true;
-				if ((task.status === "leased" || task.status === "running") && task.leasedAt) {
+				if (
+					(task.status === "leased" || task.status === "running") &&
+					task.leasedAt
+				) {
 					return Date.parse(task.leasedAt) + leaseMs <= now;
 				}
 				return false;
@@ -110,7 +118,10 @@ export class MemoryTaskQueue {
 
 	private requireOwnedTask(taskId: string, workerId: string): RecoveryTask {
 		const task = this.requireTask(taskId);
-		if ((task.status !== "leased" && task.status !== "running") || task.leasedBy !== workerId) {
+		if (
+			(task.status !== "leased" && task.status !== "running") ||
+			task.leasedBy !== workerId
+		) {
 			throw new Error("task is not owned by this worker");
 		}
 		return task;

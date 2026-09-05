@@ -26,7 +26,11 @@ export const recoveryReasonCodeSchema = z.enum([
 ]);
 
 export const recoveryChannelSchema = z.enum(["whatsapp", "email"]);
-export const agentStatusSchema = z.enum(["running", "paused", "needs_attention"]);
+export const agentStatusSchema = z.enum([
+	"running",
+	"paused",
+	"needs_attention",
+]);
 export const conversationStateSchema = z.enum([
 	"reactivation",
 	"interest_check",
@@ -91,7 +95,11 @@ export const recoveryPlanSchema = z.object({
 	followUpAfterHours: z.number().int().positive(),
 });
 
-export const policyResultSchema = z.enum(["allowed", "blocked", "requires_approval"]);
+export const policyResultSchema = z.enum([
+	"allowed",
+	"blocked",
+	"requires_approval",
+]);
 export const messageModeSchema = z.enum(["free_form", "approved_template"]);
 
 export const policyDecisionSchema = z.object({
@@ -106,7 +114,10 @@ export const recoveryPolicySchema = z.object({
 	contact: z.object({
 		maxAttempts: z.number().int().min(1).max(20),
 		minimumIntervalHours: z.number().nonnegative(),
-		allowedHours: z.object({ start: z.number().int().min(0).max(23), end: z.number().int().min(1).max(24) }),
+		allowedHours: z.object({
+			start: z.number().int().min(0).max(23),
+			end: z.number().int().min(1).max(24),
+		}),
 		allowedWeekdays: z.array(z.number().int().min(0).max(6)),
 		timeZone: z.string(),
 		suppressOnOptOut: z.boolean(),
@@ -140,7 +151,14 @@ export const recoveryTaskSchema = z.object({
 	id: z.string(),
 	opportunityId: z.string(),
 	recoverySessionId: z.string(),
-	taskType: z.enum(["analyze", "plan", "send_message", "check_reply", "handoff", "crm_sync"]),
+	taskType: z.enum([
+		"analyze",
+		"plan",
+		"send_message",
+		"check_reply",
+		"handoff",
+		"crm_sync",
+	]),
 	payload: z.record(z.string(), z.unknown()),
 	priority: z.number().int(),
 	dueAt: z.iso.datetime(),
@@ -212,7 +230,14 @@ export const operatorConsoleSnapshotSchema = z.object({
 		recoverableValue: z.number().nonnegative(),
 		recoveredValue: z.number().nonnegative(),
 	}),
-	agentFocus: z.array(z.object({ id: z.string(), label: z.string(), dueAt: z.iso.datetime(), reason: z.string() })),
+	agentFocus: z.array(
+		z.object({
+			id: z.string(),
+			label: z.string(),
+			dueAt: z.iso.datetime(),
+			reason: z.string(),
+		}),
+	),
 	opportunities: z.array(recoveryCandidateSchema),
 	plans: z.array(recoveryPlanSchema),
 	tasks: z.array(recoveryTaskSchema),
@@ -235,5 +260,7 @@ export type RecoveryTask = z.infer<typeof recoveryTaskSchema>;
 export type RecoveryMessage = z.infer<typeof recoveryMessageSchema>;
 export type RecoveryHandoff = z.infer<typeof recoveryHandoffSchema>;
 export type RecoveryEvent = z.infer<typeof recoveryEventSchema>;
-export type OperatorConsoleSnapshot = z.infer<typeof operatorConsoleSnapshotSchema>;
+export type OperatorConsoleSnapshot = z.infer<
+	typeof operatorConsoleSnapshotSchema
+>;
 export type ConversationState = z.infer<typeof conversationStateSchema>;

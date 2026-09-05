@@ -1,9 +1,9 @@
 import type { ConversationMessage } from "../domain/recovery.ts";
 import { decideConversationReply } from "./conversation-agent.ts";
-import { evaluateRecoveryPolicy } from "./policy-engine.ts";
 import { planRecovery } from "./planner.ts";
+import { evaluateRecoveryPolicy } from "./policy-engine.ts";
 import type { CRMProvider, MessagingProvider } from "./providers.ts";
-import { MemoryTaskQueue } from "./task-queue.ts";
+import type { MemoryTaskQueue } from "./task-queue.ts";
 import type {
 	PolicyDecision,
 	RecoveryCandidate,
@@ -49,7 +49,9 @@ function event(input: Omit<RecoveryEvent, "id">): RecoveryEvent {
 
 function temporaryPolicyBlock(decision: PolicyDecision): boolean {
 	return decision.reasons.some((reason) =>
-		["blocked_by_hours", "blocked_by_weekday", "minimum_interval"].includes(reason),
+		["blocked_by_hours", "blocked_by_weekday", "minimum_interval"].includes(
+			reason,
+		),
 	);
 }
 
@@ -82,15 +84,20 @@ export class AutonomousRecoveryEngine {
 		return candidates;
 	}
 
-	async schedule(candidateId: string, now: string): Promise<RecoveryTask | null> {
+	async schedule(
+		candidateId: string,
+		now: string,
+	): Promise<RecoveryTask | null> {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
-		if (!candidate || candidate.optedOut || candidate.activeHumanConversation) return null;
+		if (!candidate || candidate.optedOut || candidate.activeHumanConversation)
+			return null;
 		const plan = planRecovery(candidate, this.policy.contact.maxAttempts);
 		const task: RecoveryTask = {
 			id: `task-${candidate.id}-${candidate.attempt + 1}`,
 			opportunityId: candidate.id,
 			recoverySessionId: `session-${candidate.id}`,
-			taskType: plan.firstAction.type === "send_message" ? "send_message" : "handoff",
+			taskType:
+				plan.firstAction.type === "send_message" ? "send_message" : "handoff",
 			payload: { strategy: plan.strategy, objective: plan.objective },
 			priority: candidate.recoveryScore * 10,
 			dueAt: candidate.dueAt ?? now,
@@ -111,7 +118,9 @@ export class AutonomousRecoveryEngine {
 
 		for (const leasedTask of claimed) {
 			this.queue.markRunning(leasedTask.id, workerId);
-			const candidate = await this.crm.getOpportunityContext(leasedTask.opportunityId);
+			const candidate = await this.crm.getOpportunityContext(
+				leasedTask.opportunityId,
+			);
 			if (!candidate) {
 				this.queue.fail(leasedTask.id, workerId, now, "opportunity_not_found");
 				continue;
@@ -148,7 +157,10 @@ export class AutonomousRecoveryEngine {
 					inputSummary: `send_message via ${candidate.channel}`,
 					decision: decision.reasons.join(", "),
 					policyResult: decision.result,
-					toolInvoked: candidate.channel === "whatsapp" ? "resolveServiceWindow" : undefined,
+					toolInvoked:
+						candidate.channel === "whatsapp"
+							? "resolveServiceWindow"
+							: undefined,
 					result: decision.result,
 				}),
 			);
@@ -156,7 +168,13 @@ export class AutonomousRecoveryEngine {
 			if (decision.result === "blocked") {
 				blocked += 1;
 				if (temporaryPolicyBlock(decision)) {
-					this.queue.fail(leasedTask.id, workerId, now, decision.reasons.join(","), 3_600_000);
+					this.queue.fail(
+						leasedTask.id,
+						workerId,
+						now,
+						decision.reasons.join(","),
+						3_600_000,
+					);
 				} else {
 					this.queue.cancel(leasedTask.id, now);
 					await this.crm.updateOpportunity(candidate.id, "suppressed");
@@ -179,7 +197,10 @@ export class AutonomousRecoveryEngine {
 				text,
 				mode: "free_form",
 			});
-			await this.crm.createActivity(candidate.id, `Recovery outreach accepted: ${sendResult.providerMessageId}`);
+			await this.crm.createActivity(
+				candidate.id,
+				`Recovery outreach accepted: ${sendResult.providerMessageId}`,
+			);
 			await this.crm.updateOpportunity(candidate.id, "awaiting_reply");
 			this.queue.succeed(leasedTask.id, workerId, now);
 			executed += 1;
@@ -199,10 +220,20 @@ export class AutonomousRecoveryEngine {
 			);
 		}
 
-		return { claimed: claimed.length, executed, blocked, requiresApproval, events: [...this.events] };
+		return {
+			claimed: claimed.length,
+			executed,
+			blocked,
+			requiresApproval,
+			events: [...this.events],
+		};
 	}
 
-	async observeReply(candidateId: string, text: string, timestamp: string): Promise<void> {
+	async observeReply(
+		candidateId: string,
+		text: string,
+		timestamp: string,
+	): Promise<void> {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
 		if (!candidate) throw new Error("opportunity_not_found");
 		const decision = decideConversationReply(candidate, text, this.policy);
@@ -240,7 +271,9 @@ export class AutonomousRecoveryEngine {
 				action: "reply_observed",
 				inputSummary: text.slice(0, 180),
 				decision: `${decision.intent}:${decision.state}`,
-				toolInvoked: decision.shouldHandoff ? "request_human_handoff" : "update_recovery_status",
+				toolInvoked: decision.shouldHandoff
+					? "request_human_handoff"
+					: "update_recovery_status",
 				result: decision.recommendedAction,
 			}),
 		);

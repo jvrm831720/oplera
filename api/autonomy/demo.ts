@@ -1,6 +1,6 @@
 import type { ConversationMessage } from "../domain/recovery.ts";
-import { defaultRecoveryPolicy } from "./policy-engine.ts";
 import { planRecovery } from "./planner.ts";
+import { defaultRecoveryPolicy } from "./policy-engine.ts";
 import { scoreRecoveryCandidate } from "./scoring.ts";
 import type {
 	OperatorConsoleSnapshot,
@@ -14,7 +14,8 @@ import type {
 type TimeUnit = "minutes" | "hours" | "days";
 
 function ago(reference: Date, amount: number, unit: TimeUnit): string {
-	const multiplier = unit === "minutes" ? 60_000 : unit === "hours" ? 3_600_000 : 86_400_000;
+	const multiplier =
+		unit === "minutes" ? 60_000 : unit === "hours" ? 3_600_000 : 86_400_000;
 	return new Date(reference.getTime() - amount * multiplier).toISOString();
 }
 
@@ -22,7 +23,10 @@ function future(reference: Date, hours: number): string {
 	return new Date(reference.getTime() + hours * 3_600_000).toISOString();
 }
 
-function conversation(reference: Date, rows: Array<["inbound" | "outbound", string, number, TimeUnit]>): ConversationMessage[] {
+function conversation(
+	reference: Date,
+	rows: Array<["inbound" | "outbound", string, number, TimeUnit]>,
+): ConversationMessage[] {
 	return rows.map(([direction, text, amount, unit]) => ({
 		direction,
 		text,
@@ -30,7 +34,10 @@ function conversation(reference: Date, rows: Array<["inbound" | "outbound", stri
 	}));
 }
 
-type Seed = Omit<RecoveryCandidate, "recoveryScore" | "reasonCode" | "reasonSummary">;
+type Seed = Omit<
+	RecoveryCandidate,
+	"recoveryScore" | "reasonCode" | "reasonSummary"
+>;
 
 function scored(seed: Seed): RecoveryCandidate {
 	const result = scoreRecoveryCandidate({
@@ -67,12 +74,28 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			attempt: 0,
 			assignee: "Oplera",
 			channel: "whatsapp",
-			evidence: ["proposal sent", "customer asked payment terms", "last inbound 2h ago"],
+			evidence: [
+				"proposal sent",
+				"customer asked payment terms",
+				"last inbound 2h ago",
+			],
 			conversation: conversation(reference, [
 				["outbound", "Enviei a proposta aprovada no CRM.", 3, "hours"],
-				["inbound", "Consigo começar ainda este mês? Como funciona o pagamento?", 2, "hours"],
+				[
+					"inbound",
+					"Consigo começar ainda este mês? Como funciona o pagamento?",
+					2,
+					"hours",
+				],
 			]),
-			signals: { previousEngagement: true, proposalSent: true, explicitBuyingQuestion: true, knownObjection: false, sellerDropped: false, lostReason: "none" },
+			signals: {
+				previousEngagement: true,
+				proposalSent: true,
+				explicitBuyingQuestion: true,
+				knownObjection: false,
+				sellerDropped: false,
+				lostReason: "none",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
@@ -94,8 +117,22 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			assignee: "Oplera",
 			channel: "whatsapp",
 			evidence: ["timing objection", "positive discovery call", "no opt-out"],
-			conversation: conversation(reference, [["inbound", "Gostei, mas vamos retomar isso no próximo mês.", 34, "days"]]),
-			signals: { previousEngagement: true, proposalSent: false, explicitBuyingQuestion: false, knownObjection: true, sellerDropped: false, lostReason: "timing" },
+			conversation: conversation(reference, [
+				[
+					"inbound",
+					"Gostei, mas vamos retomar isso no próximo mês.",
+					34,
+					"days",
+				],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: false,
+				explicitBuyingQuestion: false,
+				knownObjection: true,
+				sellerDropped: false,
+				lostReason: "timing",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
@@ -116,9 +153,26 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			attempt: 0,
 			assignee: "Oplera",
 			channel: "email",
-			evidence: ["customer asked implementation date", "seller stopped replying"],
-			conversation: conversation(reference, [["inbound", "Qual a primeira data disponível para começar?", 12, "days"]]),
-			signals: { previousEngagement: true, proposalSent: false, explicitBuyingQuestion: true, knownObjection: false, sellerDropped: true, lostReason: "none" },
+			evidence: [
+				"customer asked implementation date",
+				"seller stopped replying",
+			],
+			conversation: conversation(reference, [
+				[
+					"inbound",
+					"Qual a primeira data disponível para começar?",
+					12,
+					"days",
+				],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: false,
+				explicitBuyingQuestion: true,
+				knownObjection: false,
+				sellerDropped: true,
+				lostReason: "none",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
@@ -139,8 +193,22 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			assignee: "Oplera",
 			channel: "email",
 			evidence: ["budget objection", "proposal reviewed", "no rejection"],
-			conversation: conversation(reference, [["inbound", "O valor ficou acima do que eu tinha separado.", 21, "days"]]),
-			signals: { previousEngagement: true, proposalSent: true, explicitBuyingQuestion: false, knownObjection: true, sellerDropped: false, lostReason: "budget" },
+			conversation: conversation(reference, [
+				[
+					"inbound",
+					"O valor ficou acima do que eu tinha separado.",
+					21,
+					"days",
+				],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: true,
+				explicitBuyingQuestion: false,
+				knownObjection: true,
+				sellerDropped: false,
+				lostReason: "budget",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
@@ -161,8 +229,17 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			assignee: "Suppressed",
 			channel: "whatsapp",
 			evidence: ["explicit opt-out message"],
-			conversation: conversation(reference, [["inbound", "Por favor não me mande mais mensagens.", 18, "days"]]),
-			signals: { previousEngagement: true, proposalSent: false, explicitBuyingQuestion: false, knownObjection: false, sellerDropped: false, lostReason: "none" },
+			conversation: conversation(reference, [
+				["inbound", "Por favor não me mande mais mensagens.", 18, "days"],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: false,
+				explicitBuyingQuestion: false,
+				knownObjection: false,
+				sellerDropped: false,
+				lostReason: "none",
+			},
 			optedOut: true,
 			activeHumanConversation: false,
 		}),
@@ -183,8 +260,17 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			assignee: "Camila (human)",
 			channel: "whatsapp",
 			evidence: ["seller message 1h ago", "conversation is active"],
-			conversation: conversation(reference, [["inbound", "Pode mandar o contrato para a Camila.", 1, "hours"]]),
-			signals: { previousEngagement: true, proposalSent: true, explicitBuyingQuestion: true, knownObjection: false, sellerDropped: false, lostReason: "none" },
+			conversation: conversation(reference, [
+				["inbound", "Pode mandar o contrato para a Camila.", 1, "hours"],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: true,
+				explicitBuyingQuestion: true,
+				knownObjection: false,
+				sellerDropped: false,
+				lostReason: "none",
+			},
 			optedOut: false,
 			activeHumanConversation: true,
 		}),
@@ -205,8 +291,17 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			assignee: "Oplera → Rafael",
 			channel: "email",
 			evidence: ["positive reply", "human handoff", "deal marked won"],
-			conversation: conversation(reference, [["inbound", "Pode seguir, fechamos.", 3, "hours"]]),
-			signals: { previousEngagement: true, proposalSent: true, explicitBuyingQuestion: true, knownObjection: false, sellerDropped: false, lostReason: "timing" },
+			conversation: conversation(reference, [
+				["inbound", "Pode seguir, fechamos.", 3, "hours"],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: true,
+				explicitBuyingQuestion: true,
+				knownObjection: false,
+				sellerDropped: false,
+				lostReason: "timing",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
@@ -226,16 +321,42 @@ export function demoCandidates(reference = new Date()): RecoveryCandidate[] {
 			attempt: 1,
 			assignee: "Revenue team",
 			channel: "whatsapp",
-			evidence: ["explicit buying intent", "contract clause question", "last inbound < 1h"],
-			conversation: conversation(reference, [["inbound", "Quero fechar. Só preciso revisar a cláusula de cancelamento com alguém.", 40, "minutes"]]),
-			signals: { previousEngagement: true, proposalSent: true, explicitBuyingQuestion: true, knownObjection: false, sellerDropped: false, lostReason: "none" },
+			evidence: [
+				"explicit buying intent",
+				"contract clause question",
+				"last inbound < 1h",
+			],
+			conversation: conversation(reference, [
+				[
+					"inbound",
+					"Quero fechar. Só preciso revisar a cláusula de cancelamento com alguém.",
+					40,
+					"minutes",
+				],
+			]),
+			signals: {
+				previousEngagement: true,
+				proposalSent: true,
+				explicitBuyingQuestion: true,
+				knownObjection: false,
+				sellerDropped: false,
+				lostReason: "none",
+			},
 			optedOut: false,
 			activeHumanConversation: false,
 		}),
 	];
 }
 
-function task(id: string, opportunityId: string, type: RecoveryTask["taskType"], status: RecoveryTask["status"], dueAt: string, priority: number, attempt = 0): RecoveryTask {
+function task(
+	id: string,
+	opportunityId: string,
+	type: RecoveryTask["taskType"],
+	status: RecoveryTask["status"],
+	dueAt: string,
+	priority: number,
+	attempt = 0,
+): RecoveryTask {
 	return {
 		id,
 		opportunityId,
@@ -252,17 +373,58 @@ function task(id: string, opportunityId: string, type: RecoveryTask["taskType"],
 	};
 }
 
-export function buildDemoOperatorConsole(reference = new Date()): OperatorConsoleSnapshot {
+export function buildDemoOperatorConsole(
+	reference = new Date(),
+): OperatorConsoleSnapshot {
 	const opportunities = demoCandidates(reference);
 	const plans = opportunities
 		.filter((item) => !["suppressed", "recovered"].includes(item.status))
-		.map((item) => planRecovery(item, defaultRecoveryPolicy.contact.maxAttempts));
+		.map((item) =>
+			planRecovery(item, defaultRecoveryPolicy.contact.maxAttempts),
+		);
 	const tasks: RecoveryTask[] = [
-		task("task-1", "opp-proposal-ghosted", "send_message", "pending", ago(reference, 10, "minutes"), 900),
-		task("task-2", "opp-timing", "send_message", "pending", future(reference, 4), 500),
-		task("task-3", "opp-seller-dropped", "plan", "pending", future(reference, 2), 600),
-		task("task-4", "opp-budget", "check_reply", "succeeded", ago(reference, 4, "hours"), 550, 1),
-		task("task-5", "opp-handoff", "handoff", "pending", ago(reference, 5, "minutes"), 1000, 1),
+		task(
+			"task-1",
+			"opp-proposal-ghosted",
+			"send_message",
+			"pending",
+			ago(reference, 10, "minutes"),
+			900,
+		),
+		task(
+			"task-2",
+			"opp-timing",
+			"send_message",
+			"pending",
+			future(reference, 4),
+			500,
+		),
+		task(
+			"task-3",
+			"opp-seller-dropped",
+			"plan",
+			"pending",
+			future(reference, 2),
+			600,
+		),
+		task(
+			"task-4",
+			"opp-budget",
+			"check_reply",
+			"succeeded",
+			ago(reference, 4, "hours"),
+			550,
+			1,
+		),
+		task(
+			"task-5",
+			"opp-handoff",
+			"handoff",
+			"pending",
+			ago(reference, 5, "minutes"),
+			1000,
+			1,
+		),
 	];
 	const messages: RecoveryMessage[] = opportunities.flatMap((opportunity) =>
 		opportunity.conversation.map((message, index) => ({
@@ -279,27 +441,93 @@ export function buildDemoOperatorConsole(reference = new Date()): OperatorConsol
 			id: "handoff-contract",
 			opportunityId: "opp-handoff",
 			reason: "legal_or_contract",
-			summary: "Cliente demonstrou alta intenção e pediu revisão de cláusula contratual.",
-			context: ["Proposta já enviada", "Valor registrado: R$ 48.000", "Nenhum opt-out", "Pergunta contratual exige humano"],
-			lastMessage: "Quero fechar. Só preciso revisar a cláusula de cancelamento com alguém.",
-			recommendedAction: "Vendedor deve assumir a conversa e responder somente com termos aprovados.",
+			summary:
+				"Cliente demonstrou alta intenção e pediu revisão de cláusula contratual.",
+			context: [
+				"Proposta já enviada",
+				"Valor registrado: R$ 48.000",
+				"Nenhum opt-out",
+				"Pergunta contratual exige humano",
+			],
+			lastMessage:
+				"Quero fechar. Só preciso revisar a cláusula de cancelamento com alguém.",
+			recommendedAction:
+				"Vendedor deve assumir a conversa e responder somente com termos aprovados.",
 			createdAt: ago(reference, 30, "minutes"),
 		},
 	];
 	const events: RecoveryEvent[] = [
-		{ id: "event-1", timestamp: ago(reference, 5, "hours"), opportunityId: "opp-proposal-ghosted", actor: "agent", action: "candidate_discovered", inputSummary: "CRM context normalized", decision: "eligible", result: "Candidate added to recovery queue" },
-		{ id: "event-2", timestamp: ago(reference, 4, "hours"), opportunityId: "opp-proposal-ghosted", actor: "agent", action: "recovery_scored", inputSummary: "Deterministic commercial signals", decision: "score calculated", result: "High recovery priority" },
-		{ id: "event-3", timestamp: ago(reference, 3, "hours"), opportunityId: "opp-proposal-ghosted", actor: "policy", action: "policy_checked", inputSummary: "Contact + commercial + WhatsApp gates", decision: "allowed", policyResult: "allowed", toolInvoked: "resolveServiceWindow", result: "Last inbound is inside 24h service window" },
-		{ id: "event-4", timestamp: ago(reference, 2, "hours"), opportunityId: "opp-handoff", actor: "agent", action: "human_handoff_requested", inputSummary: "Contract question", decision: "handoff", policyResult: "requires_approval", result: "Revenue team review required" },
-		{ id: "event-5", timestamp: ago(reference, 1, "hours"), opportunityId: "opp-recovered", actor: "human", action: "opportunity_recovered", inputSummary: "Qualified handoff completed", decision: "won", result: "CRM status synchronized" },
+		{
+			id: "event-1",
+			timestamp: ago(reference, 5, "hours"),
+			opportunityId: "opp-proposal-ghosted",
+			actor: "agent",
+			action: "candidate_discovered",
+			inputSummary: "CRM context normalized",
+			decision: "eligible",
+			result: "Candidate added to recovery queue",
+		},
+		{
+			id: "event-2",
+			timestamp: ago(reference, 4, "hours"),
+			opportunityId: "opp-proposal-ghosted",
+			actor: "agent",
+			action: "recovery_scored",
+			inputSummary: "Deterministic commercial signals",
+			decision: "score calculated",
+			result: "High recovery priority",
+		},
+		{
+			id: "event-3",
+			timestamp: ago(reference, 3, "hours"),
+			opportunityId: "opp-proposal-ghosted",
+			actor: "policy",
+			action: "policy_checked",
+			inputSummary: "Contact + commercial + WhatsApp gates",
+			decision: "allowed",
+			policyResult: "allowed",
+			toolInvoked: "resolveServiceWindow",
+			result: "Last inbound is inside 24h service window",
+		},
+		{
+			id: "event-4",
+			timestamp: ago(reference, 2, "hours"),
+			opportunityId: "opp-handoff",
+			actor: "agent",
+			action: "human_handoff_requested",
+			inputSummary: "Contract question",
+			decision: "handoff",
+			policyResult: "requires_approval",
+			result: "Revenue team review required",
+		},
+		{
+			id: "event-5",
+			timestamp: ago(reference, 1, "hours"),
+			opportunityId: "opp-recovered",
+			actor: "human",
+			action: "opportunity_recovered",
+			inputSummary: "Qualified handoff completed",
+			decision: "won",
+			result: "CRM status synchronized",
+		},
 	];
-	const activeRecoverable = opportunities.filter((item) => !["suppressed", "recovered", "lost"].includes(item.status));
+	const activeRecoverable = opportunities.filter(
+		(item) => !["suppressed", "recovered", "lost"].includes(item.status),
+	);
 	const now = reference.getTime();
 	const focus = tasks
 		.filter((item) => item.status === "pending")
 		.sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt))
 		.slice(0, 4)
-		.map((item) => ({ id: item.id, label: `${item.taskType.replaceAll("_", " ")} · ${opportunities.find((opportunity) => opportunity.id === item.opportunityId)?.contactName ?? item.opportunityId}`, dueAt: item.dueAt, reason: opportunities.find((opportunity) => opportunity.id === item.opportunityId)?.nextAction ?? "Scheduled by recovery planner" }));
+		.map((item) => ({
+			id: item.id,
+			label: `${item.taskType.replaceAll("_", " ")} · ${opportunities.find((opportunity) => opportunity.id === item.opportunityId)?.contactName ?? item.opportunityId}`,
+			dueAt: item.dueAt,
+			reason:
+				opportunities.find(
+					(opportunity) => opportunity.id === item.opportunityId,
+				)?.nextAction ?? "Scheduled by recovery planner",
+		}));
 
 	return {
 		version: "0.4",
@@ -307,21 +535,46 @@ export function buildDemoOperatorConsole(reference = new Date()): OperatorConsol
 		generatedAt: reference.toISOString(),
 		agentStatus: "running",
 		queue: {
-			dueNow: tasks.filter((item) => item.status === "pending" && Date.parse(item.dueAt) <= now).length,
-			scheduled: tasks.filter((item) => item.status === "pending" && Date.parse(item.dueAt) > now).length,
-			processing: tasks.filter((item) => item.status === "leased" || item.status === "running").length,
-			awaitingReply: opportunities.filter((item) => item.status === "awaiting_reply" || item.status === "engaged").length,
-			humanReview: opportunities.filter((item) => item.status === "human_review").length,
+			dueNow: tasks.filter(
+				(item) => item.status === "pending" && Date.parse(item.dueAt) <= now,
+			).length,
+			scheduled: tasks.filter(
+				(item) => item.status === "pending" && Date.parse(item.dueAt) > now,
+			).length,
+			processing: tasks.filter(
+				(item) => item.status === "leased" || item.status === "running",
+			).length,
+			awaitingReply: opportunities.filter(
+				(item) => item.status === "awaiting_reply" || item.status === "engaged",
+			).length,
+			humanReview: opportunities.filter(
+				(item) => item.status === "human_review",
+			).length,
 		},
 		recovery: {
 			opportunitiesAnalyzed: opportunities.length,
 			recoverable: activeRecoverable.length,
-			contacted: opportunities.filter((item) => ["contacted", "awaiting_reply", "engaged", "human_review", "handed_off", "recovered"].includes(item.status)).length,
+			contacted: opportunities.filter((item) =>
+				[
+					"contacted",
+					"awaiting_reply",
+					"engaged",
+					"human_review",
+					"handed_off",
+					"recovered",
+				].includes(item.status),
+			).length,
 			engaged: opportunities.filter((item) => item.status === "engaged").length,
 			handedOff: handoffs.length,
-			recoveredWon: opportunities.filter((item) => item.status === "recovered").length,
-			recoverableValue: activeRecoverable.reduce((sum, item) => sum + item.amount, 0),
-			recoveredValue: opportunities.filter((item) => item.status === "recovered").reduce((sum, item) => sum + item.amount, 0),
+			recoveredWon: opportunities.filter((item) => item.status === "recovered")
+				.length,
+			recoverableValue: activeRecoverable.reduce(
+				(sum, item) => sum + item.amount,
+				0,
+			),
+			recoveredValue: opportunities
+				.filter((item) => item.status === "recovered")
+				.reduce((sum, item) => sum + item.amount, 0),
 		},
 		agentFocus: focus,
 		opportunities,

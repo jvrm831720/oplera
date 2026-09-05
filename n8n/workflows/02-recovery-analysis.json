@@ -1,27 +1,48 @@
 {
-  "name": "Oplera 02 — Recovery Analysis",
-  "nodes": [
-    { "parameters": {}, "id": "02-manual-trigger", "name": "Manual Trigger", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0] },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/agent-step",
-        "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "content-type", "value": "application/json" }] },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "{\"step\":\"analysis\"}",
-        "options": {}
-      },
-      "id": "02-oplera-analysis",
-      "name": "Run Recovery Analysis",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [260, 0]
-    }
-  ],
-  "connections": { "Manual Trigger": { "main": [[{ "node": "Run Recovery Analysis", "type": "main", "index": 0 }]] } },
-  "pinData": {}, "active": false, "settings": { "executionOrder": "v1" },
-  "versionId": "00000000-0000-4000-8000-000000000002", "meta": { "templateCredsSetupCompleted": true }, "tags": []
+	"name": "Oplera 02 — Recovery Analysis",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "02-manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/agent-step",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{ "name": "content-type", "value": "application/json" }
+					]
+				},
+				"sendBody": true,
+				"contentType": "raw",
+				"rawContentType": "application/json",
+				"body": "{\"step\":\"analysis\"}",
+				"options": {}
+			},
+			"id": "02-oplera-analysis",
+			"name": "Run Recovery Analysis",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [260, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[{ "node": "Run Recovery Analysis", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"pinData": {},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "00000000-0000-4000-8000-000000000002",
+	"meta": { "templateCredsSetupCompleted": true },
+	"tags": []
 }
