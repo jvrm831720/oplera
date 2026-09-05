@@ -7,14 +7,18 @@ import { parseWhatsAppWebhook, WhatsAppCloudProvider } from "./whatsapp.ts";
 describe("WhatsApp Cloud provider", () => {
 	test("dry-run never calls the network and is idempotent", async () => {
 		let calls = 0;
+		const fetcher = Object.assign(
+			async () => {
+				calls += 1;
+				return jsonResponse({ messages: [{ id: "should-not-send" }] });
+			},
+			{ preconnect: fetch.preconnect },
+		);
 		const provider = new WhatsAppCloudProvider(
 			pilotTestConfig(),
 			new PilotStateStore(":memory:"),
 			async () => "+5511999999999",
-			(async () => {
-				calls += 1;
-				return jsonResponse({ messages: [{ id: "should-not-send" }] });
-			}) as typeof fetch,
+			fetcher,
 		);
 		const input = {
 			idempotencyKey: "same-key",
