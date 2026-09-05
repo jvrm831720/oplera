@@ -11,6 +11,7 @@ import RecoveryPage from "./tools/recovery/index.tsx";
 
 const TOOL_PAGES: Record<string, React.ComponentType> = {
 	analyze_revenue_recovery: RecoveryPage,
+	operate_revenue_recovery: RecoveryPage,
 };
 
 function ToolRouter() {
