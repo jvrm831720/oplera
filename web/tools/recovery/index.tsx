@@ -469,20 +469,20 @@ export default function RecoveryPage() {
 									<div className="flex items-start gap-3 rounded-xl border border-[#cbeadd] bg-[#edf7f3] p-4">
 										<ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#176c4c]" />
 										<p className="text-[11px] leading-5 text-[#176c4c]">
-											Janela de atendimento aberta. O último inbound válido ainda
-											está dentro das 24 horas. A mensagem livre pode ser preparada
-											para revisão humana; a Oplera não envia automaticamente nesta
-											etapa.
+											Janela de atendimento aberta. O último inbound válido
+											ainda está dentro das 24 horas. A mensagem livre pode ser
+											preparada para revisão humana; a Oplera não envia
+											automaticamente nesta etapa.
 										</p>
 									</div>
 								) : selected.deliveryMode === "approved_template_required" ? (
 									<div className="flex items-start gap-3 rounded-xl border border-[#f0dfae] bg-[#fffaea] p-4">
 										<ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#7a5a00]" />
 										<p className="text-[11px] leading-5 text-[#765b13]">
-											Fora da janela livre de atendimento. O envio pela API oficial
-											requer um template aplicável e aprovado conforme a política
-											vigente. A Oplera não valida aprovação nem envia automaticamente
-											nesta etapa.
+											Fora da janela livre de atendimento. O envio pela API
+											oficial requer um template aplicável e aprovado conforme a
+											política vigente. A Oplera não valida aprovação nem envia
+											automaticamente nesta etapa.
 										</p>
 									</div>
 								) : (
@@ -490,8 +490,9 @@ export default function RecoveryPage() {
 										<CircleAlert className="mt-0.5 size-4 shrink-0 text-[#6f6e67]" />
 										<p className="text-[11px] leading-5 text-[#6f6e67]">
 											Janela de atendimento em revisão. Não há evidência inbound
-											suficiente ou confiável para determinar a janela de 24 horas.
-											Exige revisão humana antes de qualquer decisão de envio.
+											suficiente ou confiável para determinar a janela de 24
+											horas. Exige revisão humana antes de qualquer decisão de
+											envio.
 										</p>
 									</div>
 								)}
