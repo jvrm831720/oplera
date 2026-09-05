@@ -1,3 +1,4 @@
+import type { ConversationMessage } from "../domain/recovery.ts";
 import type { RecoveryCandidate, RecoveryStatus } from "./types.ts";
 
 export interface SendMessageInput {
@@ -21,6 +22,8 @@ export interface CRMProvider {
 	listRecoveryCandidates(): Promise<RecoveryCandidate[]>;
 	getOpportunityContext(id: string): Promise<RecoveryCandidate | null>;
 	updateOpportunity(id: string, status: RecoveryStatus): Promise<void>;
+	recordContactAttempt(id: string): Promise<void>;
+	appendConversationMessage(id: string, message: ConversationMessage): Promise<void>;
 	createActivity(id: string, summary: string): Promise<void>;
 }
 
@@ -77,15 +80,33 @@ export class DemoCRMProvider implements CRMProvider {
 	}
 
 	async updateOpportunity(id: string, status: RecoveryStatus): Promise<void> {
-		const value = this.opportunities.get(id);
-		if (!value) throw new Error(`unknown opportunity ${id}`);
+		const value = this.requireOpportunity(id);
 		value.status = status;
 	}
 
+	async recordContactAttempt(id: string): Promise<void> {
+		const value = this.requireOpportunity(id);
+		value.attempt += 1;
+	}
+
+	async appendConversationMessage(
+		id: string,
+		message: ConversationMessage,
+	): Promise<void> {
+		const value = this.requireOpportunity(id);
+		value.conversation.push(structuredClone(message));
+		value.lastActivity = message.timestamp;
+	}
+
 	async createActivity(id: string, summary: string): Promise<void> {
-		if (!this.opportunities.has(id))
-			throw new Error(`unknown opportunity ${id}`);
+		this.requireOpportunity(id);
 		this.activities.push({ opportunityId: id, summary });
+	}
+
+	private requireOpportunity(id: string): RecoveryCandidate {
+		const value = this.opportunities.get(id);
+		if (!value) throw new Error(`unknown opportunity ${id}`);
+		return value;
 	}
 }
 

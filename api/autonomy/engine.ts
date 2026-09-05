@@ -1,5 +1,7 @@
-import type { ConversationMessage } from "../domain/recovery.ts";
-import { decideConversationReply } from "./conversation-agent.ts";
+import {
+	decideConversationReply,
+	type ConversationDecision,
+} from "./conversation-agent.ts";
 import { planRecovery } from "./planner.ts";
 import { evaluateRecoveryPolicy } from "./policy-engine.ts";
 import type { CRMProvider, MessagingProvider } from "./providers.ts";
@@ -91,6 +93,9 @@ export class AutonomousRecoveryEngine {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
 		if (!candidate || candidate.optedOut || candidate.activeHumanConversation)
 			return null;
+		if (["suppressed", "recovered", "lost", "handed_off"].includes(candidate.status))
+			return null;
+
 		const plan = planRecovery(candidate, this.policy.contact.maxAttempts);
 		const task: RecoveryTask = {
 			id: `task-${candidate.id}-${candidate.attempt + 1}`,
@@ -197,6 +202,12 @@ export class AutonomousRecoveryEngine {
 				text,
 				mode: "free_form",
 			});
+			await this.crm.appendConversationMessage(candidate.id, {
+				direction: "outbound",
+				text,
+				timestamp: now,
+			});
+			await this.crm.recordContactAttempt(candidate.id);
 			await this.crm.createActivity(
 				candidate.id,
 				`Recovery outreach accepted: ${sendResult.providerMessageId}`,
@@ -233,15 +244,15 @@ export class AutonomousRecoveryEngine {
 		candidateId: string,
 		text: string,
 		timestamp: string,
-	): Promise<void> {
+	): Promise<ConversationDecision> {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
 		if (!candidate) throw new Error("opportunity_not_found");
 		const decision = decideConversationReply(candidate, text, this.policy);
-		const updatedConversation: ConversationMessage[] = [
-			...candidate.conversation,
-			{ direction: "inbound", text, timestamp },
-		];
-		void updatedConversation;
+		await this.crm.appendConversationMessage(candidate.id, {
+			direction: "inbound",
+			text,
+			timestamp,
+		});
 
 		if (decision.intent === "opt_out") {
 			await this.crm.updateOpportunity(candidate.id, "suppressed");
@@ -277,5 +288,6 @@ export class AutonomousRecoveryEngine {
 				result: decision.recommendedAction,
 			}),
 		);
+		return decision;
 	}
 }
