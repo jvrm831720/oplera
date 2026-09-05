@@ -1,0 +1,16 @@
+{
+  "name": "Oplera 09 — Follow-up Scheduler",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 1 }] } },
+      "id": "09-schedule-trigger", "name": "Generic Dispatcher Schedule", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 0]
+    },
+    {
+      "parameters": { "method": "POST", "url": "={{$env.OPLERA_BASE_URL}}/api/v0.4/dispatch", "options": {} },
+      "id": "09-oplera-dispatch", "name": "Dispatch Due Tasks", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [280, 0]
+    }
+  ],
+  "connections": { "Generic Dispatcher Schedule": { "main": [[{ "node": "Dispatch Due Tasks", "type": "main", "index": 0 }]] } },
+  "pinData": {}, "active": false, "settings": { "executionOrder": "v1" },
+  "versionId": "00000000-0000-4000-8000-000000000009", "meta": { "templateCredsSetupCompleted": true }, "tags": []
+}
