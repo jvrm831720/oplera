@@ -106,7 +106,10 @@ export async function handleAutonomyHttp(
 			});
 		} catch (error) {
 			if (error instanceof Error && error.message === "opportunity_not_found") {
-				return Response.json({ error: "opportunity_not_found" }, { status: 404 });
+				return Response.json(
+					{ error: "opportunity_not_found" },
+					{ status: 404 },
+				);
 			}
 			throw error;
 		}

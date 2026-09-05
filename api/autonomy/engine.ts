@@ -1,6 +1,6 @@
 import {
-	decideConversationReply,
 	type ConversationDecision,
+	decideConversationReply,
 } from "./conversation-agent.ts";
 import { planRecovery } from "./planner.ts";
 import { evaluateRecoveryPolicy } from "./policy-engine.ts";
@@ -93,7 +93,11 @@ export class AutonomousRecoveryEngine {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
 		if (!candidate || candidate.optedOut || candidate.activeHumanConversation)
 			return null;
-		if (["suppressed", "recovered", "lost", "handed_off"].includes(candidate.status))
+		if (
+			["suppressed", "recovered", "lost", "handed_off"].includes(
+				candidate.status,
+			)
+		)
 			return null;
 
 		const plan = planRecovery(candidate, this.policy.contact.maxAttempts);

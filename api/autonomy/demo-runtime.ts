@@ -1,6 +1,9 @@
 import { buildDemoOperatorConsole, demoCandidates } from "./demo.ts";
 import { AutonomousRecoveryEngine } from "./engine.ts";
-import { evaluateRecoveryPolicy, defaultRecoveryPolicy } from "./policy-engine.ts";
+import {
+	defaultRecoveryPolicy,
+	evaluateRecoveryPolicy,
+} from "./policy-engine.ts";
 import { DemoCRMProvider, DemoMessagingProvider } from "./providers.ts";
 import { MemoryTaskQueue } from "./task-queue.ts";
 import type { OperatorConsoleSnapshot, RecoveryCandidate } from "./types.ts";
@@ -21,7 +24,10 @@ function messageRows(opportunities: RecoveryCandidate[]) {
 		opportunity.conversation.map((message, index) => ({
 			id: `${opportunity.id}-runtime-${index + 1}`,
 			opportunityId: opportunity.id,
-			actor: message.direction === "inbound" ? ("customer" as const) : ("oplera" as const),
+			actor:
+				message.direction === "inbound"
+					? ("customer" as const)
+					: ("oplera" as const),
 			channel: opportunity.channel,
 			text: message.text,
 			timestamp: message.timestamp,
@@ -93,11 +99,14 @@ export class DemoRecoveryRuntime {
 				return this.dispatch(now);
 			case "incoming_reply":
 				return {
-					message: "Use POST /api/v0.4/replies so the reply carries opportunity_id and text.",
+					message:
+						"Use POST /api/v0.4/replies so the reply carries opportunity_id and text.",
 				};
 			case "conversation":
 				return {
-					events: this.engine.events.filter((item) => item.action === "reply_observed"),
+					events: this.engine.events.filter(
+						(item) => item.action === "reply_observed",
+					),
 				};
 			case "handoff":
 				return this.engine.handoffs;
@@ -135,8 +144,9 @@ export class DemoRecoveryRuntime {
 				awaitingReply: opportunities.filter((item) =>
 					["awaiting_reply", "engaged"].includes(item.status),
 				).length,
-				humanReview: opportunities.filter((item) => item.status === "human_review")
-					.length,
+				humanReview: opportunities.filter(
+					(item) => item.status === "human_review",
+				).length,
 			},
 			recovery: {
 				opportunitiesAnalyzed: opportunities.length,
@@ -151,10 +161,16 @@ export class DemoRecoveryRuntime {
 						"recovered",
 					].includes(item.status),
 				).length,
-				engaged: opportunities.filter((item) => item.status === "engaged").length,
+				engaged: opportunities.filter((item) => item.status === "engaged")
+					.length,
 				handedOff: handoffs.length,
-				recoveredWon: opportunities.filter((item) => item.status === "recovered").length,
-				recoverableValue: activeRecoverable.reduce((sum, item) => sum + item.amount, 0),
+				recoveredWon: opportunities.filter(
+					(item) => item.status === "recovered",
+				).length,
+				recoverableValue: activeRecoverable.reduce(
+					(sum, item) => sum + item.amount,
+					0,
+				),
 				recoveredValue: opportunities
 					.filter((item) => item.status === "recovered")
 					.reduce((sum, item) => sum + item.amount, 0),

@@ -23,7 +23,10 @@ export interface CRMProvider {
 	getOpportunityContext(id: string): Promise<RecoveryCandidate | null>;
 	updateOpportunity(id: string, status: RecoveryStatus): Promise<void>;
 	recordContactAttempt(id: string): Promise<void>;
-	appendConversationMessage(id: string, message: ConversationMessage): Promise<void>;
+	appendConversationMessage(
+		id: string,
+		message: ConversationMessage,
+	): Promise<void>;
 	createActivity(id: string, summary: string): Promise<void>;
 }
 

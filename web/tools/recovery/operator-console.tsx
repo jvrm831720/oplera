@@ -134,10 +134,10 @@ function Overview({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
 					</div>
 					<div className="inline-flex items-center gap-2 rounded-sm border border-[#dce8da] bg-[#f5faf3] px-3 py-2 text-xs text-[#315c36]">
 						<span className="size-1.5 rounded-full bg-[#74a95e]" />
-						Agent running server-side
+						{snapshot.agentStatus.replaceAll("_", " ")} server-side
 					</div>
 				</div>
-				<div className="grid grid-cols-2 md:grid-cols-4">
+				<div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
 					<Metric
 						label="Analyzed"
 						value={String(snapshot.recovery.opportunitiesAnalyzed)}
@@ -147,12 +147,17 @@ function Overview({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
 						value={String(snapshot.recovery.recoverable)}
 					/>
 					<Metric
-						label="Human review"
-						value={String(snapshot.queue.humanReview)}
+						label="Contacted"
+						value={String(snapshot.recovery.contacted)}
+					/>
+					<Metric label="Engaged" value={String(snapshot.recovery.engaged)} />
+					<Metric
+						label="Handed off"
+						value={String(snapshot.recovery.handedOff)}
 					/>
 					<Metric
 						label="Recovered"
-						value={currency.format(snapshot.recovery.recoveredValue)}
+						value={String(snapshot.recovery.recoveredWon)}
 					/>
 				</div>
 			</section>
@@ -244,18 +249,64 @@ function Overview({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
 }
 
 function RecoveryQueue({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
-	const rows = snapshot.tasks.map((task) => ({
-		task,
-		opportunity: snapshot.opportunities.find(
-			(item) => item.id === task.opportunityId,
-		),
-	}));
+	const [statusFilter, setStatusFilter] = useState<RecoveryStatus | "all">(
+		"all",
+	);
+	const [channelFilter, setChannelFilter] = useState<
+		"all" | "whatsapp" | "email"
+	>("all");
+	const rows = snapshot.tasks
+		.map((task) => ({
+			task,
+			opportunity: snapshot.opportunities.find(
+				(item) => item.id === task.opportunityId,
+			),
+		}))
+		.filter(({ opportunity }) =>
+			opportunity
+				? (statusFilter === "all" || opportunity.status === statusFilter) &&
+					(channelFilter === "all" || opportunity.channel === channelFilter)
+				: false,
+		);
 	return (
 		<>
 			<PageTitle
 				title="Recovery Queue"
 				description="Work queue do agente. dueAt e prioridade decidem o que pode ser leased por cada dispatcher."
 			/>
+			<div className="mb-3 flex flex-wrap gap-2">
+				<select
+					aria-label="Filter recovery queue by status"
+					value={statusFilter}
+					onChange={(event) =>
+						setStatusFilter(event.currentTarget.value as RecoveryStatus | "all")
+					}
+					className="rounded-sm border border-[#dfe3dd] bg-white px-2 py-1.5 text-xs text-[#505650]"
+				>
+					<option value="all">All statuses</option>
+					{[...new Set(snapshot.opportunities.map((item) => item.status))].map(
+						(status) => (
+							<option key={status} value={status}>
+								{statusLabel(status)}
+							</option>
+						),
+					)}
+				</select>
+				<select
+					aria-label="Filter recovery queue by channel"
+					value={channelFilter}
+					onChange={(event) =>
+						setChannelFilter(
+							event.currentTarget.value as "all" | "whatsapp" | "email",
+						)
+					}
+					className="rounded-sm border border-[#dfe3dd] bg-white px-2 py-1.5 text-xs text-[#505650]"
+				>
+					<option value="all">All channels</option>
+					<option value="whatsapp">WhatsApp</option>
+					<option value="email">Email</option>
+				</select>
+			</div>
 			<div className="overflow-x-auto rounded-md border border-[#e1e4df] bg-white">
 				<table className="w-full min-w-[1180px] text-left">
 					<thead className="border-b border-[#e7e9e5] bg-[#fafbf9] text-[10px] uppercase tracking-[0.06em] text-[#7c827b]">
@@ -860,9 +911,9 @@ export default function OperatorConsole({
 							Agent status
 						</p>
 					</div>
-					<div className="mt-2 flex items-center gap-2 text-xs">
+					<div className="mt-2 flex items-center gap-2 text-xs capitalize">
 						<span className="size-1.5 rounded-full bg-[#70a65d]" />
-						Running
+						{snapshot.agentStatus.replaceAll("_", " ")}
 					</div>
 					<p className="mt-2 text-[10px] leading-4 text-[#7d837c]">
 						Closing this console does not stop server-side orchestration.
