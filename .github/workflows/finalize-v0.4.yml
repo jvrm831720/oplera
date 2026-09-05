@@ -1,0 +1,144 @@
+name: Finalize V0.4 once
+
+on:
+  push:
+    branches:
+      - feat/autonomous-revenue-recovery-v0.4
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/autonomous-revenue-recovery-v0.4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Align operator console with V0.4 spec
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("web/tools/recovery/operator-console.tsx")
+          text = path.read_text()
+
+          metrics = '''\t\t\t\t<div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+          \t\t\t\t\t<Metric
+          \t\t\t\t\t\tlabel="Analyzed"
+          \t\t\t\t\t\tvalue={String(snapshot.recovery.opportunitiesAnalyzed)}
+          \t\t\t\t\t/>
+          \t\t\t\t\t<Metric label="Recoverable" value={String(snapshot.recovery.recoverable)} />
+          \t\t\t\t\t<Metric label="Contacted" value={String(snapshot.recovery.contacted)} />
+          \t\t\t\t\t<Metric label="Engaged" value={String(snapshot.recovery.engaged)} />
+          \t\t\t\t\t<Metric label="Handed off" value={String(snapshot.recovery.handedOff)} />
+          \t\t\t\t\t<Metric label="Recovered" value={String(snapshot.recovery.recoveredWon)} />
+          \t\t\t\t</div>
+          \t\t\t</section>'''
+          text, count = re.subn(
+              r'\t\t\t\t<div className="grid grid-cols-2 md:grid-cols-4">.*?\t\t\t\t</div>\n\t\t\t</section>',
+              metrics,
+              text,
+              count=1,
+              flags=re.S,
+          )
+          assert count == 1, f"overview metrics replacement count={count}"
+
+          old_queue = '''function RecoveryQueue({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
+          \tconst rows = snapshot.tasks.map((task) => ({
+          \t\ttask,
+          \t\topportunity: snapshot.opportunities.find(
+          \t\t\t(item) => item.id === task.opportunityId,
+          \t\t),
+          \t}));'''
+          new_queue = '''function RecoveryQueue({ snapshot }: { snapshot: OperatorConsoleSnapshot }) {
+          \tconst [statusFilter, setStatusFilter] = useState<RecoveryStatus | "all">("all");
+          \tconst [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "email">("all");
+          \tconst rows = snapshot.tasks
+          \t\t.map((task) => ({
+          \t\t\ttask,
+          \t\t\topportunity: snapshot.opportunities.find(
+          \t\t\t\t(item) => item.id === task.opportunityId,
+          \t\t\t),
+          \t\t}))
+          \t\t.filter(({ opportunity }) =>
+          \t\t\topportunity
+          \t\t\t\t? (statusFilter === "all" || opportunity.status === statusFilter) &&
+          \t\t\t\t\t(channelFilter === "all" || opportunity.channel === channelFilter)
+          \t\t\t\t: false,
+          \t\t);'''
+          assert old_queue in text, "queue function anchor not found"
+          text = text.replace(old_queue, new_queue, 1)
+
+          old_toolbar_anchor = '''\t\t\t<PageTitle
+          \t\t\t\ttitle="Recovery Queue"
+          \t\t\t\tdescription="Work queue do agente. dueAt e prioridade decidem o que pode ser leased por cada dispatcher."
+          \t\t\t/>
+          \t\t\t<div className="overflow-x-auto rounded-md border border-[#e1e4df] bg-white">'''
+          new_toolbar_anchor = '''\t\t\t<PageTitle
+          \t\t\t\ttitle="Recovery Queue"
+          \t\t\t\tdescription="Work queue do agente. dueAt e prioridade decidem o que pode ser leased por cada dispatcher."
+          \t\t\t/>
+          \t\t\t<div className="mb-3 flex flex-wrap gap-2">
+          \t\t\t\t<select
+          \t\t\t\t\taria-label="Filter recovery queue by status"
+          \t\t\t\t\tvalue={statusFilter}
+          \t\t\t\t\tonChange={(event) => setStatusFilter(event.currentTarget.value as RecoveryStatus | "all")}
+          \t\t\t\t\tclassName="rounded-sm border border-[#dfe3dd] bg-white px-2 py-1.5 text-xs text-[#505650]"
+          \t\t\t\t>
+          \t\t\t\t\t<option value="all">All statuses</option>
+          \t\t\t\t\t{[...new Set(snapshot.opportunities.map((item) => item.status))].map((status) => (
+          \t\t\t\t\t\t<option key={status} value={status}>{statusLabel(status)}</option>
+          \t\t\t\t\t))}
+          \t\t\t\t</select>
+          \t\t\t\t<select
+          \t\t\t\t\taria-label="Filter recovery queue by channel"
+          \t\t\t\t\tvalue={channelFilter}
+          \t\t\t\t\tonChange={(event) => setChannelFilter(event.currentTarget.value as "all" | "whatsapp" | "email")}
+          \t\t\t\t\tclassName="rounded-sm border border-[#dfe3dd] bg-white px-2 py-1.5 text-xs text-[#505650]"
+          \t\t\t\t>
+          \t\t\t\t\t<option value="all">All channels</option>
+          \t\t\t\t\t<option value="whatsapp">WhatsApp</option>
+          \t\t\t\t\t<option value="email">Email</option>
+          \t\t\t\t</select>
+          \t\t\t</div>
+          \t\t\t<div className="overflow-x-auto rounded-md border border-[#e1e4df] bg-white">'''
+          assert old_toolbar_anchor in text, "queue toolbar anchor not found"
+          text = text.replace(old_toolbar_anchor, new_toolbar_anchor, 1)
+
+          assert "Agent running server-side" in text
+          text = text.replace(
+              "Agent running server-side",
+              '{snapshot.agentStatus.replaceAll("_", " ")} server-side',
+              1,
+          )
+          old_status = '''\t\t\t\t\t<div className="mt-2 flex items-center gap-2 text-xs">
+          \t\t\t\t\t\t<span className="size-1.5 rounded-full bg-[#70a65d]" />
+          \t\t\t\t\t\tRunning
+          \t\t\t\t\t</div>'''
+          new_status = '''\t\t\t\t\t<div className="mt-2 flex items-center gap-2 text-xs capitalize">
+          \t\t\t\t\t\t<span className="size-1.5 rounded-full bg-[#70a65d]" />
+          \t\t\t\t\t\t{snapshot.agentStatus.replaceAll("_", " ")}
+          \t\t\t\t\t</div>'''
+          assert old_status in text, "agent status anchor not found"
+          text = text.replace(old_status, new_status, 1)
+
+          path.write_text(text)
+          PY
+      - name: Apply repository Biome fixes
+        run: bunx biome check --write .
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/finalize-v0.4.yml
+      - name: Commit final V0.4 alignment
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: complete V0.4 operator console controls"
+          git push origin HEAD:feat/autonomous-revenue-recovery-v0.4
