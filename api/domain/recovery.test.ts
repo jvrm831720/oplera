@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { parseConversationCsv } from "./csv.ts";
 import {
 	analyzeRecoveryPipeline,
+	type ConversationMessage,
 	resolveServiceWindow,
 	sampleConversations,
-	type ConversationMessage,
 } from "./recovery.ts";
 
 const referenceDate = "2026-09-05T12:00:00.000Z";
@@ -30,8 +30,10 @@ function opportunityFromInbound(timestamp: string) {
 
 	expect(result.opportunities).toHaveLength(1);
 	const opportunity = result.opportunities[0];
-	expect(opportunity).toBeDefined();
-	return opportunity!;
+	if (!opportunity) {
+		throw new Error("expected a recoverable opportunity");
+	}
+	return opportunity;
 }
 
 function serviceWindowFor(messages: ConversationMessage[]) {
@@ -73,9 +75,7 @@ describe("analyzeRecoveryPipeline", () => {
 
 		expect(opportunity.deliveryMode).toBe("free_form");
 		expect(opportunity.serviceWindowOpen).toBe(true);
-		expect(opportunity.lastInboundMessageAt).toBe(
-			"2026-09-04T12:01:00.000Z",
-		);
+		expect(opportunity.lastInboundMessageAt).toBe("2026-09-04T12:01:00.000Z");
 	});
 
 	test("keeps free-form open at exactly 24 hours", () => {
