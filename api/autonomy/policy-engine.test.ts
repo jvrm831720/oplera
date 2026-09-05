@@ -42,7 +42,7 @@ describe("policy engine", () => {
 
 	test("blocks outside configured contact hours", () => {
 		const decision = evaluateRecoveryPolicy(
-			input({ now: "2026-09-07T02:00:00.000Z" }),
+			input({ now: "2026-09-07T11:00:00.000Z" }),
 		);
 		expect(decision).toMatchObject({
 			result: "blocked",

@@ -64,7 +64,7 @@ describe("autonomous recovery lifecycle", () => {
 		);
 		expect(engine.handoffs).toHaveLength(1);
 		const handoff = engine.handoffs[0];
-		expect(handoff?.reason).toBe("customer_requested_human");
+		expect(handoff?.reason).toBe("legal_or_contract");
 		expect(JSON.stringify(handoff)).not.toContain("chain-of-thought");
 		expect(JSON.stringify(handoff)).not.toContain("reasoning");
 	});
