@@ -1,5 +1,6 @@
 import { withRuntime } from "@decocms/runtime";
 import { handleAutonomyHttp } from "./autonomy/http.ts";
+import { handlePilotHttp } from "./pilot/http.ts";
 import { prompts } from "./prompts/index.ts";
 import {
 	readRecoveryAppHtml,
@@ -81,6 +82,9 @@ function withMcpApiRoute(fetcher: Fetcher): Fetcher {
 				headers: { "content-type": "text/html; charset=utf-8" },
 			});
 		}
+
+		const pilotResponse = await handlePilotHttp(req);
+		if (pilotResponse) return pilotResponse;
 
 		const autonomyResponse = await handleAutonomyHttp(req);
 		if (autonomyResponse) return autonomyResponse;
