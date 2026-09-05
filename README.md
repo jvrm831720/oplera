@@ -1,4 +1,4 @@
-# Oplera Revenue — MVP V0.1
+# Oplera Revenue — MVP V0.1.1
 
 Oplera encontra receita que já entrou na operação comercial, mas ficou parada em
 conversas sem o próximo passo correto.
@@ -13,7 +13,7 @@ prioriza oportunidades recuperáveis e prepara uma retomada para revisão humana
 - análise determinística e auditável de intenção, abandono e valor;
 - importação local de CSV, sem enviar o histórico a um serviço externo;
 - mensagem de retomada sugerida por oportunidade;
-- proteção explícita para a janela de atendimento do WhatsApp;
+- cálculo da janela de atendimento do WhatsApp a partir do último inbound válido;
 - MCP tool e interface interativa compatíveis com o deco Studio;
 - modo de demonstração com dados completamente fictícios.
 
@@ -24,9 +24,15 @@ uma API de exportação retroativa de todo o histórico. Para analisar conversas
 anteriores, o MVP recebe um CSV exportado do CRM, provedor de atendimento ou outra
 fonte autorizada pelo cliente.
 
-O MVP também **não envia mensagens automaticamente**. Conversas fora da janela
-livre precisam de template aprovado e consentimento válido. A ação é preparada
-para revisão humana; conexão e envio oficial entram somente no piloto contratado.
+A V0.1.1 **não envia mensagens**. A janela livre é calculada pelo tempo real decorrido
+desde a última mensagem inbound válida: até 24 horas inclusive resulta em
+`free_form`; acima de 24 horas resulta em `approved_template_required`; quando não
+há evidência inbound suficiente ou confiável, o resultado é `manual_review`.
+
+A V0.1.1 não valida se um template está efetivamente aprovado ou aplicável. Fora da
+janela livre, o envio pela WhatsApp Business Platform depende de template aplicável
+e aprovado conforme a política vigente. Conexão e envio oficial entram somente após
+piloto contratado e continuam sujeitos a revisão humana.
 
 ## Formato do CSV
 
@@ -67,9 +73,9 @@ Recebe `company_name`, `average_ticket`, `reference_date` e uma lista opcional d
 `conversations`. Sem conversas, retorna o cenário fictício de demonstração. Com
 conversas, valida e analisa no servidor.
 
-O score V0.1 é uma heurística explicável, não uma previsão estatística de fechamento.
-Pipeline estimado também não é receita garantida. Essas duas distinções devem
-permanecer visíveis durante a venda.
+O score V0.1.1 é uma heurística explicável, não uma previsão estatística de fechamento.
+Pipeline potencial também não é receita garantida. Receita recuperada só existe
+quando uma venda puder ser atribuída posteriormente à retomada.
 
 ## Qualidade
 

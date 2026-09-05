@@ -1,0 +1,17 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"bunVersion": "1.x",
+	"buildCommand": "bun run build:web",
+	"functions": {
+		"api/vercel.ts": {
+			"includeFiles": "dist/client/index.html",
+			"maxDuration": 60
+		}
+	},
+	"rewrites": [
+		{
+			"source": "/:path*",
+			"destination": "/api/vercel?__path=:path*"
+		}
+	]
+}
