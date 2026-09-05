@@ -13,7 +13,7 @@
 		"build": "bun run build:web && bun run build:server",
 		"ci:check": "bunx biome ci .",
 		"check": "tsc --noEmit",
-		"test": "bun test api",
+		"test": "bun run build:web && bun test api",
 		"fmt": "biome format --write .",
 		"lint": "biome lint --write .",
 		"dev:worktree": "bun run scripts/dev-worktree.ts",
