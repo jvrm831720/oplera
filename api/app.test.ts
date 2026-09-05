@@ -21,4 +21,24 @@ describe("HTTP app", () => {
 		expect(html).toContain("Oplera Revenue");
 		expect(html.length).toBeGreaterThan(100_000);
 	});
+
+	test("exposes the MCP endpoint through /api/mcp", async () => {
+		const response = await app.fetch(
+			new Request("http://localhost/api/mcp", {
+				method: "POST",
+				headers: {
+					accept: "application/json, text/event-stream",
+					"content-type": "application/json",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 1,
+					method: "tools/list",
+					params: {},
+				}),
+			}),
+		);
+
+		expect(response.status).not.toBe(404);
+	});
 });
