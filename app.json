@@ -1,0 +1,33 @@
+{
+	"scopeName": "oplera",
+	"name": "revenue-recovery",
+	"friendlyName": "Oplera Revenue",
+	"description": "Encontra oportunidades comerciais abandonadas, prioriza o potencial de recuperação e prepara a próxima ação.",
+	"icon": "",
+	"connection": {
+		"type": "HTTP",
+		"url": "https://your-oplera-deployment.example.com/api/mcp",
+		"configSchema": {
+			"type": "object",
+			"properties": {
+				"companyName": {
+					"type": "string",
+					"title": "Nome da empresa"
+				},
+				"averageTicket": {
+					"type": "number",
+					"minimum": 0,
+					"title": "Ticket médio (R$)"
+				}
+			},
+			"required": []
+		}
+	},
+	"unlisted": true,
+	"metadata": {
+		"categories": ["Sales"],
+		"official": false,
+		"tags": ["revenue", "sales", "whatsapp", "recovery", "mcp-app"],
+		"short_description": "Recupere receita escondida nas conversas comerciais."
+	}
+}
