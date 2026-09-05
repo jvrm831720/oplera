@@ -107,8 +107,7 @@ describe("live pilot runtime", () => {
 		expect(
 			hubspotRequests.filter(
 				(item) =>
-					item.method === "POST" &&
-					item.url.endsWith("/crm/v3/objects/notes"),
+					item.method === "POST" && item.url.endsWith("/crm/v3/objects/notes"),
 			).length,
 		).toBeGreaterThanOrEqual(2);
 
@@ -128,7 +127,8 @@ describe("live pilot runtime", () => {
 		};
 		const observed = await runtime.handleIncoming(inbound);
 		expect(observed.status).toBe("processed");
-		if (observed.status !== "processed") throw new Error("expected_processed_reply");
+		if (observed.status !== "processed")
+			throw new Error("expected_processed_reply");
 		expect(observed.decision.intent).toBe("objection");
 		expect(observed.decision.objection).toBe("budget");
 		expect(
