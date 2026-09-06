@@ -46,7 +46,7 @@ button {
 	cursor: pointer;
 }
 .hidden {
-	display: none !important;
+	display: none;
 }
 
 .app-header {
@@ -374,7 +374,7 @@ input:focus {
 	border-radius: 50%;
 	animation: spin 0.8s linear infinite;
 }
-#loading-state {
+#loading-state:not(.hidden) {
 	display: flex;
 	align-items: center;
 	gap: 10px;

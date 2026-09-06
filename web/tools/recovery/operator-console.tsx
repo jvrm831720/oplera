@@ -51,7 +51,6 @@ import {
 	recoveryReasonLabel,
 	recoveryStatusLabel,
 	strategyLabel,
-	taskTypeLabel,
 } from "../../lib/pt-br.ts";
 
 function StatusBadge({ status }: { status: RecoveryStatus }) {
