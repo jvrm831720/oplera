@@ -70,8 +70,7 @@ export class AutonomousRecoveryEngine {
 		private readonly messaging: MessagingProvider,
 		readonly queue: TaskQueue,
 		readonly policy: RecoveryPolicy,
-		private readonly persistence: RecoveryPersistence =
-			new NullRecoveryPersistence(),
+		private readonly persistence: RecoveryPersistence = new NullRecoveryPersistence(),
 	) {}
 
 	private async recordEvent(recoveryEvent: RecoveryEvent): Promise<void> {
@@ -347,10 +346,7 @@ export class AutonomousRecoveryEngine {
 				createdAt: timestamp,
 			};
 			this.handoffs.push(handoff);
-			await this.persistence.appendHandoff(
-				handoff,
-				`session-${candidate.id}`,
-			);
+			await this.persistence.appendHandoff(handoff, `session-${candidate.id}`);
 		} else if (decision.intent === "not_interested") {
 			await this.crm.updateOpportunity(candidate.id, "lost");
 		} else {

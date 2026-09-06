@@ -58,8 +58,5 @@ export class NullRecoveryPersistence implements RecoveryPersistence {
 	): void {}
 	appendDecision(_decision: RecoveryDecisionRecord): void {}
 	appendEvent(_event: RecoveryEvent): void {}
-	appendHandoff(
-		_handoff: RecoveryHandoff,
-		_recoverySessionId?: string,
-	): void {}
+	appendHandoff(_handoff: RecoveryHandoff, _recoverySessionId?: string): void {}
 }

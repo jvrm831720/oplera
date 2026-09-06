@@ -1,15 +1,15 @@
 import type { DatabaseClient } from "../db/client.ts";
 import type {
+	RecoveryDecisionRecord,
+	RecoveryPersistence,
+	RecoverySessionRecord,
+} from "./persistence.ts";
+import type {
 	RecoveryCandidate,
 	RecoveryEvent,
 	RecoveryHandoff,
 	RecoveryMessage,
 } from "./types.ts";
-import type {
-	RecoveryDecisionRecord,
-	RecoveryPersistence,
-	RecoverySessionRecord,
-} from "./persistence.ts";
 
 interface OpportunityIdRow {
 	id: string;
@@ -210,7 +210,9 @@ export class PostgresRecoveryPersistence implements RecoveryPersistence {
 		let taskId: string | null = null;
 		let sessionId: string | null = null;
 		if (event.taskId) {
-			const tasks = await this.sql<{ id: string; recovery_session_id: string }[]>`
+			const tasks = await this.sql<
+				{ id: string; recovery_session_id: string }[]
+			>`
 				SELECT id, recovery_session_id
 				FROM oplera.recovery_tasks
 				WHERE id = ${event.taskId}

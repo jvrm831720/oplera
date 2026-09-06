@@ -387,7 +387,9 @@ export class PostgresTaskQueue implements TaskQueue {
 		const rows = await update();
 		const row = rows[0];
 		if (!row) {
-			const task = await this.sql<{ status: string; leased_by: string | null }[]>`
+			const task = await this.sql<
+				{ status: string; leased_by: string | null }[]
+			>`
 				SELECT status, leased_by FROM oplera.recovery_tasks WHERE id = ${taskId}
 			`;
 			if (task.length === 0) throw new Error(`unknown task ${taskId}`);

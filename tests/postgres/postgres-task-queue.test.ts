@@ -28,28 +28,31 @@ function task(overrides: Partial<RecoveryTask> = {}): RecoveryTask {
 	};
 }
 
-postgresTest("postgres queue leases one task to exactly one concurrent worker", async () => {
-	const url = requireDatabaseUrl();
-	const sqlA = createDatabaseClient(url);
-	const sqlB = createDatabaseClient(url);
-	try {
-		const queueA = new PostgresTaskQueue(sqlA, "test");
-		const queueB = new PostgresTaskQueue(sqlB, "test");
-		const pending = task();
-		await queueA.enqueue(pending);
+postgresTest(
+	"postgres queue leases one task to exactly one concurrent worker",
+	async () => {
+		const url = requireDatabaseUrl();
+		const sqlA = createDatabaseClient(url);
+		const sqlB = createDatabaseClient(url);
+		try {
+			const queueA = new PostgresTaskQueue(sqlA, "test");
+			const queueB = new PostgresTaskQueue(sqlB, "test");
+			const pending = task();
+			await queueA.enqueue(pending);
 
-		const [claimedA, claimedB] = await Promise.all([
-			queueA.claimDue("worker-a", NOW, 1),
-			queueB.claimDue("worker-b", NOW, 1),
-		]);
-		const claimed = [...claimedA, ...claimedB];
-		expect(claimed).toHaveLength(1);
-		expect(claimed[0]?.id).toBe(pending.id);
-		expect(["worker-a", "worker-b"]).toContain(claimed[0]?.leasedBy);
-	} finally {
-		await Promise.all([sqlA.close(), sqlB.close()]);
-	}
-});
+			const [claimedA, claimedB] = await Promise.all([
+				queueA.claimDue("worker-a", NOW, 1),
+				queueB.claimDue("worker-b", NOW, 1),
+			]);
+			const claimed = [...claimedA, ...claimedB];
+			expect(claimed).toHaveLength(1);
+			expect(claimed[0]?.id).toBe(pending.id);
+			expect(["worker-a", "worker-b"]).toContain(claimed[0]?.leasedBy);
+		} finally {
+			await Promise.all([sqlA.close(), sqlB.close()]);
+		}
+	},
+);
 
 postgresTest("postgres queue recovers an expired lease", async () => {
 	const sql = createDatabaseClient(requireDatabaseUrl());
@@ -70,94 +73,109 @@ postgresTest("postgres queue recovers an expired lease", async () => {
 	}
 });
 
-postgresTest("postgres queue preserves retry, max attempts, success and cancellation", async () => {
-	const sql = createDatabaseClient(requireDatabaseUrl());
-	try {
-		const queue = new PostgresTaskQueue(sql, "test");
-		const retryTask = task({ maxAttempts: 2 });
-		await queue.enqueue(retryTask);
-		await queue.claimDue("worker-retry", NOW, 1);
-		await queue.markRunning(retryTask.id, "worker-retry");
-		const retry = await queue.fail(
-			retryTask.id,
-			"worker-retry",
-			NOW,
-			"provider_timeout",
-			60_000,
-		);
-		expect(retry.status).toBe("pending");
-		expect(retry.dueAt).toBe("2026-09-06T12:01:00.000Z");
+postgresTest(
+	"postgres queue preserves retry, max attempts, success and cancellation",
+	async () => {
+		const sql = createDatabaseClient(requireDatabaseUrl());
+		try {
+			const queue = new PostgresTaskQueue(sql, "test");
+			const retryTask = task({ maxAttempts: 2 });
+			await queue.enqueue(retryTask);
+			await queue.claimDue("worker-retry", NOW, 1);
+			await queue.markRunning(retryTask.id, "worker-retry");
+			const retry = await queue.fail(
+				retryTask.id,
+				"worker-retry",
+				NOW,
+				"provider_timeout",
+				60_000,
+			);
+			expect(retry.status).toBe("pending");
+			expect(retry.dueAt).toBe("2026-09-06T12:01:00.000Z");
 
-		await queue.claimDue("worker-retry", "2026-09-06T12:01:00.000Z", 1);
-		await queue.markRunning(retryTask.id, "worker-retry");
-		const failed = await queue.fail(
-			retryTask.id,
-			"worker-retry",
-			"2026-09-06T12:01:00.000Z",
-			"provider_timeout_again",
-		);
-		expect(failed.status).toBe("failed");
-		expect(failed.attempt).toBe(2);
+			await queue.claimDue("worker-retry", "2026-09-06T12:01:00.000Z", 1);
+			await queue.markRunning(retryTask.id, "worker-retry");
+			const failed = await queue.fail(
+				retryTask.id,
+				"worker-retry",
+				"2026-09-06T12:01:00.000Z",
+				"provider_timeout_again",
+			);
+			expect(failed.status).toBe("failed");
+			expect(failed.attempt).toBe(2);
 
-		const successTask = task();
-		await queue.enqueue(successTask);
-		await queue.claimDue("worker-success", NOW, 1);
-		await queue.markRunning(successTask.id, "worker-success");
-		const succeeded = await queue.succeed(successTask.id, "worker-success", NOW);
-		expect(succeeded.status).toBe("succeeded");
+			const successTask = task();
+			await queue.enqueue(successTask);
+			await queue.claimDue("worker-success", NOW, 1);
+			await queue.markRunning(successTask.id, "worker-success");
+			const succeeded = await queue.succeed(
+				successTask.id,
+				"worker-success",
+				NOW,
+			);
+			expect(succeeded.status).toBe("succeeded");
 
-		const cancelTask = task();
-		await queue.enqueue(cancelTask);
-		const cancelled = await queue.cancel(cancelTask.id, NOW);
-		expect(cancelled.status).toBe("cancelled");
-	} finally {
-		await sql.close();
-	}
-});
+			const cancelTask = task();
+			await queue.enqueue(cancelTask);
+			const cancelled = await queue.cancel(cancelTask.id, NOW);
+			expect(cancelled.status).toBe("cancelled");
+		} finally {
+			await sql.close();
+		}
+	},
+);
 
-postgresTest("postgres queue preserves idempotency, ordering and due_at", async () => {
-	const sql = createDatabaseClient(requireDatabaseUrl());
-	try {
-		const queue = new PostgresTaskQueue(sql, "test");
-		const idempotencyKey = `idem-shared-${crypto.randomUUID()}`;
-		const original = task({ idempotencyKey, priority: 10 });
-		const duplicate = task({ idempotencyKey, priority: 999 });
-		const inserted = await queue.enqueue(original);
-		const deduplicated = await queue.enqueue(duplicate);
-		expect(deduplicated.id).toBe(inserted.id);
+postgresTest(
+	"postgres queue preserves idempotency, ordering and due_at",
+	async () => {
+		const sql = createDatabaseClient(requireDatabaseUrl());
+		try {
+			const queue = new PostgresTaskQueue(sql, "test");
+			const idempotencyKey = `idem-shared-${crypto.randomUUID()}`;
+			const original = task({ idempotencyKey, priority: 10 });
+			const duplicate = task({ idempotencyKey, priority: 999 });
+			const inserted = await queue.enqueue(original);
+			const deduplicated = await queue.enqueue(duplicate);
+			expect(deduplicated.id).toBe(inserted.id);
 
-		const low = task({ priority: 20 });
-		const high = task({ priority: 900 });
-		const future = task({
-			priority: 1000,
-			dueAt: "2026-09-06T13:00:00.000Z",
-		});
-		await queue.enqueue(low);
-		await queue.enqueue(high);
-		await queue.enqueue(future);
-		const claimed = await queue.claimDue("worker-order", NOW, 10);
-		const relevant = claimed.filter((item) => item.id === low.id || item.id === high.id);
-		expect(relevant.map((item) => item.id)).toEqual([high.id, low.id]);
-		expect(claimed.some((item) => item.id === future.id)).toBe(false);
-	} finally {
-		await sql.close();
-	}
-});
+			const low = task({ priority: 20 });
+			const high = task({ priority: 900 });
+			const future = task({
+				priority: 1000,
+				dueAt: "2026-09-06T13:00:00.000Z",
+			});
+			await queue.enqueue(low);
+			await queue.enqueue(high);
+			await queue.enqueue(future);
+			const claimed = await queue.claimDue("worker-order", NOW, 10);
+			const relevant = claimed.filter(
+				(item) => item.id === low.id || item.id === high.id,
+			);
+			expect(relevant.map((item) => item.id)).toEqual([high.id, low.id]);
+			expect(claimed.some((item) => item.id === future.id)).toBe(false);
+		} finally {
+			await sql.close();
+		}
+	},
+);
 
-postgresTest("postgres queue survives process-style client restart", async () => {
-	const url = requireDatabaseUrl();
-	const sqlA = createDatabaseClient(url);
-	const queueA = new PostgresTaskQueue(sqlA, "test");
-	const pending = task();
-	await queueA.enqueue(pending);
-	await sqlA.close();
+postgresTest(
+	"postgres queue survives process-style client restart",
+	async () => {
+		const url = requireDatabaseUrl();
+		const sqlA = createDatabaseClient(url);
+		const queueA = new PostgresTaskQueue(sqlA, "test");
+		const pending = task();
+		await queueA.enqueue(pending);
+		await sqlA.close();
 
-	const sqlB = createDatabaseClient(url);
-	try {
-		const queueB = new PostgresTaskQueue(sqlB, "test");
-		const tasks = await queueB.list();
-		expect(tasks.some((item) => item.id === pending.id)).toBe(true);
-	} finally {
-		await sqlB.close();
-	}
-});
+		const sqlB = createDatabaseClient(url);
+		try {
+			const queueB = new PostgresTaskQueue(sqlB, "test");
+			const tasks = await queueB.list();
+			expect(tasks.some((item) => item.id === pending.id)).toBe(true);
+		} finally {
+			await sqlB.close();
+		}
+	},
+);

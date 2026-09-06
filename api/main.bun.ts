@@ -1,5 +1,5 @@
-import { requireDatabaseUrl, shouldUsePostgres } from "./db/client.ts";
 import { app } from "./app.ts";
+import { requireDatabaseUrl, shouldUsePostgres } from "./db/client.ts";
 
 if (shouldUsePostgres()) requireDatabaseUrl();
 

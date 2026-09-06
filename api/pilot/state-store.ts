@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { SendMessageResult } from "../autonomy/providers.ts";
 import type { MaybePromise } from "../autonomy/persistence.ts";
+import type { SendMessageResult } from "../autonomy/providers.ts";
 
 export interface ApprovalRow {
 	fingerprint: string;
@@ -128,7 +128,14 @@ export class PilotStateStore implements PilotStateStoreLike {
 					idempotency_key, opportunity_id, provider, status, request_metadata, created_at, updated_at
 				) VALUES (?, ?, ?, 'reserved', ?, ?, ?)
 			`)
-			.run(key, opportunityId, provider, JSON.stringify(requestMetadata), now, now);
+			.run(
+				key,
+				opportunityId,
+				provider,
+				JSON.stringify(requestMetadata),
+				now,
+				now,
+			);
 		if (inserted.changes > 0)
 			return { acquired: true, status: "reserved", result: null };
 		const row = this.outboundRow(key);

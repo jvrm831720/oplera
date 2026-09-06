@@ -30,10 +30,7 @@ import { loadPilotConfig, type PilotConfig } from "./config.ts";
 import { HubSpotCRMProvider } from "./hubspot.ts";
 import { pilotLog } from "./logger.ts";
 import { PostgresPilotStateStore } from "./postgres-state-store.ts";
-import {
-	PilotStateStore,
-	type PilotStateStoreLike,
-} from "./state-store.ts";
+import { PilotStateStore, type PilotStateStoreLike } from "./state-store.ts";
 import {
 	WhatsAppCloudProvider,
 	type WhatsAppInboundMessage,
@@ -292,7 +289,13 @@ export class PilotRuntime {
 
 	async handleIncoming(message: WhatsAppInboundMessage) {
 		const provider = "whatsapp_cloud_api";
-		if (!(await this.state.markInboundSeen(provider, message.id, message.timestamp))) {
+		if (
+			!(await this.state.markInboundSeen(
+				provider,
+				message.id,
+				message.timestamp,
+			))
+		) {
 			return { status: "duplicate" as const, messageId: message.id };
 		}
 		const opportunityId = await this.hubspot.findAllowedOpportunityByPhone(
@@ -305,7 +308,11 @@ export class PilotRuntime {
 			});
 			return { status: "ignored" as const, messageId: message.id };
 		}
-		await this.state.markInboundOpportunity(provider, message.id, opportunityId);
+		await this.state.markInboundOpportunity(
+			provider,
+			message.id,
+			opportunityId,
+		);
 		const decision = await this.engine.observeReply(
 			opportunityId,
 			message.text,
