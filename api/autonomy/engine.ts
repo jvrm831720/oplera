@@ -2,10 +2,14 @@ import {
 	type ConversationDecision,
 	decideConversationReply,
 } from "./conversation-agent.ts";
+import {
+	NullRecoveryPersistence,
+	type RecoveryPersistence,
+} from "./persistence.ts";
 import { planRecovery } from "./planner.ts";
 import { evaluateRecoveryPolicy } from "./policy-engine.ts";
 import type { CRMProvider, MessagingProvider } from "./providers.ts";
-import type { MemoryTaskQueue } from "./task-queue.ts";
+import type { TaskQueue } from "./task-queue.ts";
 import type {
 	PolicyDecision,
 	RecoveryCandidate,
@@ -64,14 +68,21 @@ export class AutonomousRecoveryEngine {
 	constructor(
 		private readonly crm: CRMProvider,
 		private readonly messaging: MessagingProvider,
-		readonly queue: MemoryTaskQueue,
+		readonly queue: TaskQueue,
 		readonly policy: RecoveryPolicy,
+		private readonly persistence: RecoveryPersistence = new NullRecoveryPersistence(),
 	) {}
+
+	private async recordEvent(recoveryEvent: RecoveryEvent): Promise<void> {
+		this.events.push(recoveryEvent);
+		await this.persistence.appendEvent(recoveryEvent);
+	}
 
 	async discover(): Promise<RecoveryCandidate[]> {
 		const candidates = await this.crm.listRecoveryCandidates();
 		for (const candidate of candidates) {
-			this.events.push(
+			await this.persistence.upsertOpportunity(candidate);
+			await this.recordEvent(
 				event({
 					timestamp: new Date().toISOString(),
 					opportunityId: candidate.id,
@@ -116,27 +127,44 @@ export class AutonomousRecoveryEngine {
 			status: "pending",
 			idempotencyKey: `${candidate.id}:${plan.strategy}:${candidate.attempt + 1}`,
 		};
-		return this.queue.enqueue(task);
+		await this.persistence.upsertOpportunity(candidate);
+		await this.persistence.upsertSession({
+			id: task.recoverySessionId,
+			opportunityId: candidate.id,
+			status: "active",
+			strategy: plan.strategy,
+			channel: candidate.channel,
+			attempt: candidate.attempt,
+			maxAttempts: plan.maxAttempts,
+			startedAt: now,
+		});
+		return await this.queue.enqueue(task);
 	}
 
 	async dispatchDue(workerId: string, now: string): Promise<DispatchResult> {
-		const claimed = this.queue.claimDue(workerId, now, 20);
+		const claimed = await this.queue.claimDue(workerId, now, 20);
 		let executed = 0;
 		let blocked = 0;
 		let requiresApproval = 0;
 
 		for (const leasedTask of claimed) {
-			this.queue.markRunning(leasedTask.id, workerId);
+			await this.queue.markRunning(leasedTask.id, workerId);
 			const candidate = await this.crm.getOpportunityContext(
 				leasedTask.opportunityId,
 			);
 			if (!candidate) {
-				this.queue.fail(leasedTask.id, workerId, now, "opportunity_not_found");
+				await this.queue.fail(
+					leasedTask.id,
+					workerId,
+					now,
+					"opportunity_not_found",
+				);
 				continue;
 			}
+			await this.persistence.upsertOpportunity(candidate);
 
 			if (leasedTask.taskType !== "send_message") {
-				this.queue.succeed(leasedTask.id, workerId, now);
+				await this.queue.succeed(leasedTask.id, workerId, now);
 				executed += 1;
 				continue;
 			}
@@ -155,8 +183,17 @@ export class AutonomousRecoveryEngine {
 				messageMode: "free_form",
 				providerSupportsApprovedTemplate: false,
 			});
+			await this.persistence.appendDecision({
+				opportunityId: candidate.id,
+				recoverySessionId: leasedTask.recoverySessionId,
+				decisionType: "policy",
+				decision: decision.result,
+				evidence: decision.reasons,
+				shortReason: decision.reasons.join(", ") || decision.result,
+				createdAt: now,
+			});
 
-			this.events.push(
+			await this.recordEvent(
 				event({
 					timestamp: now,
 					opportunityId: candidate.id,
@@ -177,7 +214,7 @@ export class AutonomousRecoveryEngine {
 			if (decision.result === "blocked") {
 				blocked += 1;
 				if (temporaryPolicyBlock(decision)) {
-					this.queue.fail(
+					await this.queue.fail(
 						leasedTask.id,
 						workerId,
 						now,
@@ -185,7 +222,7 @@ export class AutonomousRecoveryEngine {
 						3_600_000,
 					);
 				} else {
-					this.queue.cancel(leasedTask.id, now);
+					await this.queue.cancel(leasedTask.id, now);
 					await this.crm.updateOpportunity(candidate.id, "suppressed");
 				}
 				continue;
@@ -193,7 +230,7 @@ export class AutonomousRecoveryEngine {
 
 			if (decision.result === "requires_approval") {
 				requiresApproval += 1;
-				this.queue.cancel(leasedTask.id, now);
+				await this.queue.cancel(leasedTask.id, now);
 				await this.crm.updateOpportunity(candidate.id, "human_review");
 				continue;
 			}
@@ -211,15 +248,27 @@ export class AutonomousRecoveryEngine {
 				text,
 				timestamp: now,
 			});
+			await this.persistence.appendMessage(
+				{
+					id: crypto.randomUUID(),
+					opportunityId: candidate.id,
+					actor: "oplera",
+					channel: candidate.channel,
+					text,
+					timestamp: now,
+				},
+				leasedTask.recoverySessionId,
+				sendResult.providerMessageId,
+			);
 			await this.crm.recordContactAttempt(candidate.id);
 			await this.crm.createActivity(
 				candidate.id,
 				`Recovery outreach accepted: ${sendResult.providerMessageId}`,
 			);
 			await this.crm.updateOpportunity(candidate.id, "awaiting_reply");
-			this.queue.succeed(leasedTask.id, workerId, now);
+			await this.queue.succeed(leasedTask.id, workerId, now);
 			executed += 1;
-			this.events.push(
+			await this.recordEvent(
 				event({
 					timestamp: now,
 					opportunityId: candidate.id,
@@ -251,18 +300,42 @@ export class AutonomousRecoveryEngine {
 	): Promise<ConversationDecision> {
 		const candidate = await this.crm.getOpportunityContext(candidateId);
 		if (!candidate) throw new Error("opportunity_not_found");
+		await this.persistence.upsertOpportunity(candidate);
 		const decision = decideConversationReply(candidate, text, this.policy);
 		await this.crm.appendConversationMessage(candidate.id, {
 			direction: "inbound",
 			text,
 			timestamp,
 		});
+		await this.persistence.appendMessage(
+			{
+				id: crypto.randomUUID(),
+				opportunityId: candidate.id,
+				actor: "customer",
+				channel: candidate.channel,
+				text,
+				timestamp,
+			},
+			`session-${candidate.id}`,
+		);
+		await this.persistence.appendDecision({
+			opportunityId: candidate.id,
+			recoverySessionId: `session-${candidate.id}`,
+			decisionType: "conversation",
+			decision: `${decision.intent}:${decision.state}`,
+			evidence: {
+				objection: decision.objection,
+				should_handoff: decision.shouldHandoff,
+			},
+			shortReason: decision.recommendedAction,
+			createdAt: timestamp,
+		});
 
 		if (decision.intent === "opt_out") {
 			await this.crm.updateOpportunity(candidate.id, "suppressed");
 		} else if (decision.shouldHandoff) {
 			await this.crm.updateOpportunity(candidate.id, "human_review");
-			this.handoffs.push({
+			const handoff: RecoveryHandoff = {
 				id: crypto.randomUUID(),
 				opportunityId: candidate.id,
 				reason: decision.handoffReason ?? "human_review",
@@ -271,14 +344,16 @@ export class AutonomousRecoveryEngine {
 				lastMessage: text,
 				recommendedAction: decision.recommendedAction,
 				createdAt: timestamp,
-			});
+			};
+			this.handoffs.push(handoff);
+			await this.persistence.appendHandoff(handoff, `session-${candidate.id}`);
 		} else if (decision.intent === "not_interested") {
 			await this.crm.updateOpportunity(candidate.id, "lost");
 		} else {
 			await this.crm.updateOpportunity(candidate.id, "engaged");
 		}
 
-		this.events.push(
+		await this.recordEvent(
 			event({
 				timestamp,
 				opportunityId: candidate.id,

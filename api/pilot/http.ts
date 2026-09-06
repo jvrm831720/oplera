@@ -52,16 +52,37 @@ export async function handlePilotHttp(req: Request): Promise<Response | null> {
 	}
 
 	if (req.method === "GET" && url.pathname === "/api/v0.4.1/pilot/health") {
-		return Response.json({
-			status: "ok",
-			version: "0.4.1",
-			crm: "hubspot",
-			messaging: "whatsapp_cloud_api",
-			dry_run: runtime.config.PILOT_DRY_RUN,
-			kill_switch: runtime.config.PILOT_KILL_SWITCH,
-			allowlisted_deals: runtime.config.HUBSPOT_DEAL_IDS.length,
-			allowlisted_phones: runtime.config.PILOT_PHONE_ALLOWLIST.length,
-		});
+		try {
+			const databaseOk = await runtime.databaseHealth();
+			return Response.json(
+				{
+					status: databaseOk ? "ok" : "degraded",
+					version: "0.4.2",
+					crm: "hubspot",
+					messaging: "whatsapp_cloud_api",
+					database: databaseOk ? "ok" : "error",
+					persistence: runtime.state.backend,
+					dry_run: runtime.config.PILOT_DRY_RUN,
+					kill_switch: runtime.config.PILOT_KILL_SWITCH,
+					allowlisted_deals: runtime.config.HUBSPOT_DEAL_IDS.length,
+					allowlisted_phones: runtime.config.PILOT_PHONE_ALLOWLIST.length,
+				},
+				{ status: databaseOk ? 200 : 503 },
+			);
+		} catch (error) {
+			pilotLog("error", "pilot_database_health_failed", {
+				error: error instanceof Error ? error.message : "database_error",
+			});
+			return Response.json(
+				{
+					status: "degraded",
+					version: "0.4.2",
+					database: "error",
+					persistence: runtime.state.backend,
+				},
+				{ status: 503 },
+			);
+		}
 	}
 
 	if (url.pathname === "/api/v0.4.1/pilot/webhooks/whatsapp") {

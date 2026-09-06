@@ -1,10 +1,36 @@
+import type { MaybePromise } from "./persistence.ts";
 import type { RecoveryTask } from "./types.ts";
+
+export interface TaskQueue {
+	enqueue(task: RecoveryTask): MaybePromise<RecoveryTask>;
+	list(): MaybePromise<RecoveryTask[]>;
+	claimDue(
+		workerId: string,
+		nowIso: string,
+		limit?: number,
+		leaseMs?: number,
+	): MaybePromise<RecoveryTask[]>;
+	markRunning(taskId: string, workerId: string): MaybePromise<RecoveryTask>;
+	succeed(
+		taskId: string,
+		workerId: string,
+		completedAt: string,
+	): MaybePromise<RecoveryTask>;
+	fail(
+		taskId: string,
+		workerId: string,
+		nowIso: string,
+		error: string,
+		retryDelayMs?: number,
+	): MaybePromise<RecoveryTask>;
+	cancel(taskId: string, completedAt: string): MaybePromise<RecoveryTask>;
+}
 
 function cloneTask(task: RecoveryTask): RecoveryTask {
 	return structuredClone(task);
 }
 
-export class MemoryTaskQueue {
+export class MemoryTaskQueue implements TaskQueue {
 	private readonly tasks = new Map<string, RecoveryTask>();
 	private readonly idempotencyIndex = new Map<string, string>();
 

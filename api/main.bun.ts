@@ -1,4 +1,7 @@
 import { app } from "./app.ts";
+import { requireDatabaseUrl, shouldUsePostgres } from "./db/client.ts";
+
+if (shouldUsePostgres()) requireDatabaseUrl();
 
 const PORT = Number(process.env.PORT) || 3001;
 

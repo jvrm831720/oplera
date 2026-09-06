@@ -3,22 +3,34 @@ import {
 	AutonomousRecoveryEngine,
 	draftRecoveryMessage,
 } from "../autonomy/engine.ts";
+import {
+	NullRecoveryPersistence,
+	type RecoveryPersistence,
+} from "../autonomy/persistence.ts";
 import { planRecovery } from "../autonomy/planner.ts";
 import {
 	defaultRecoveryPolicy,
 	evaluateRecoveryPolicy,
 } from "../autonomy/policy-engine.ts";
-import { MemoryTaskQueue } from "../autonomy/task-queue.ts";
+import { PostgresRecoveryPersistence } from "../autonomy/postgres-persistence.ts";
+import { PostgresTaskQueue } from "../autonomy/postgres-task-queue.ts";
+import { MemoryTaskQueue, type TaskQueue } from "../autonomy/task-queue.ts";
 import type {
 	MessageMode,
 	PolicyDecision,
 	RecoveryCandidate,
 } from "../autonomy/types.ts";
+import {
+	createDatabaseClient,
+	requireDatabaseUrl,
+	shouldUsePostgres,
+} from "../db/client.ts";
 import { resolveServiceWindow } from "../domain/recovery.ts";
 import { loadPilotConfig, type PilotConfig } from "./config.ts";
 import { HubSpotCRMProvider } from "./hubspot.ts";
 import { pilotLog } from "./logger.ts";
-import { PilotStateStore } from "./state-store.ts";
+import { PostgresPilotStateStore } from "./postgres-state-store.ts";
+import { PilotStateStore, type PilotStateStoreLike } from "./state-store.ts";
 import {
 	WhatsAppCloudProvider,
 	type WhatsAppInboundMessage,
@@ -75,20 +87,30 @@ export class PilotRuntime {
 
 	constructor(
 		readonly config: PilotConfig,
-		readonly state: PilotStateStore,
+		readonly state: PilotStateStoreLike,
 		readonly hubspot: HubSpotCRMProvider,
 		readonly whatsapp: WhatsAppCloudProvider,
+		readonly queue: TaskQueue = new MemoryTaskQueue(),
+		readonly persistence: RecoveryPersistence = new NullRecoveryPersistence(),
 	) {
 		this.engine = new AutonomousRecoveryEngine(
 			hubspot,
 			whatsapp,
-			new MemoryTaskQueue(),
+			queue,
 			defaultRecoveryPolicy,
+			persistence,
 		);
 	}
 
+	async databaseHealth(): Promise<boolean> {
+		return await this.state.healthCheck();
+	}
+
 	async listOpportunities(): Promise<RecoveryCandidate[]> {
-		return this.hubspot.listRecoveryCandidates();
+		const candidates = await this.hubspot.listRecoveryCandidates();
+		for (const candidate of candidates)
+			await this.persistence.upsertOpportunity(candidate);
+		return candidates;
 	}
 
 	async preview(
@@ -97,6 +119,7 @@ export class PilotRuntime {
 	): Promise<PilotPreview> {
 		const candidate = await this.hubspot.getOpportunityContext(opportunityId);
 		if (!candidate) throw new Error("opportunity_not_found");
+		await this.persistence.upsertOpportunity(candidate);
 		const plan = planRecovery(
 			candidate,
 			defaultRecoveryPolicy.contact.maxAttempts,
@@ -132,7 +155,7 @@ export class PilotRuntime {
 			strategy: plan.strategy,
 			templateName: this.config.WHATSAPP_TEMPLATE_NAME,
 		});
-		const approval = this.state.getApproval(candidate.id, fingerprint);
+		const approval = await this.state.getApproval(candidate.id, fingerprint);
 		const requiresFirstContactApproval = candidate.attempt === 0 && !approval;
 		const requiresPolicyApproval =
 			policy.result === "requires_approval" && !approval;
@@ -157,7 +180,13 @@ export class PilotRuntime {
 		now = new Date().toISOString(),
 	): Promise<PilotPreview> {
 		const preview = await this.preview(opportunityId, now);
-		this.state.approve(opportunityId, preview.fingerprint, approvedBy, now);
+		await this.state.approve(
+			opportunityId,
+			preview.candidate.attempt,
+			preview.fingerprint,
+			approvedBy,
+			now,
+		);
 		pilotLog("info", "pilot_action_approved", {
 			opportunity_id: opportunityId,
 			approved_by: approvedBy,
@@ -216,7 +245,7 @@ export class PilotRuntime {
 			};
 		}
 
-		if (!this.state.isWritebackComplete(idempotencyKey)) {
+		if (!(await this.state.isWritebackComplete(idempotencyKey))) {
 			const outboundText =
 				preview.messageMode === "approved_template"
 					? `[template:${this.config.WHATSAPP_TEMPLATE_NAME}]`
@@ -226,15 +255,27 @@ export class PilotRuntime {
 				text: outboundText,
 				timestamp: now,
 			});
+			await this.persistence.appendMessage(
+				{
+					id: crypto.randomUUID(),
+					opportunityId,
+					actor: "oplera",
+					channel: "whatsapp",
+					text: outboundText,
+					timestamp: now,
+				},
+				`session-${opportunityId}`,
+				result.providerMessageId,
+			);
 			await this.hubspot.recordContactAttempt(opportunityId);
 			await this.hubspot.createActivity(
 				opportunityId,
 				`WhatsApp recovery outreach accepted: ${result.providerMessageId}`,
 			);
 			await this.hubspot.updateOpportunity(opportunityId, "awaiting_reply");
-			this.state.markWritebackComplete(idempotencyKey, now);
+			await this.state.markWritebackComplete(idempotencyKey, now);
 			if (preview.candidate.attempt === 0)
-				this.state.consumeApproval(opportunityId, now);
+				await this.state.consumeApproval(opportunityId, now);
 		}
 
 		return {
@@ -247,7 +288,14 @@ export class PilotRuntime {
 	}
 
 	async handleIncoming(message: WhatsAppInboundMessage) {
-		if (!this.state.markInboundSeen(message.id, message.timestamp)) {
+		const provider = "whatsapp_cloud_api";
+		if (
+			!(await this.state.markInboundSeen(
+				provider,
+				message.id,
+				message.timestamp,
+			))
+		) {
 			return { status: "duplicate" as const, messageId: message.id };
 		}
 		const opportunityId = await this.hubspot.findAllowedOpportunityByPhone(
@@ -260,6 +308,11 @@ export class PilotRuntime {
 			});
 			return { status: "ignored" as const, messageId: message.id };
 		}
+		await this.state.markInboundOpportunity(
+			provider,
+			message.id,
+			opportunityId,
+		);
 		const decision = await this.engine.observeReply(
 			opportunityId,
 			message.text,
@@ -283,8 +336,28 @@ let singleton: PilotRuntime | null = null;
 export function getPilotRuntime(): PilotRuntime {
 	if (singleton) return singleton;
 	const config = loadPilotConfig();
-	const state = new PilotStateStore(config.PILOT_STATE_DB_PATH);
 	const hubspot = new HubSpotCRMProvider(config);
+
+	if (shouldUsePostgres()) {
+		const sql = createDatabaseClient(requireDatabaseUrl());
+		const state = new PostgresPilotStateStore(sql);
+		const queue = new PostgresTaskQueue(sql);
+		const persistence = new PostgresRecoveryPersistence(sql);
+		const whatsapp = new WhatsAppCloudProvider(config, state, (id) =>
+			hubspot.resolveMessagingRecipient(id),
+		);
+		singleton = new PilotRuntime(
+			config,
+			state,
+			hubspot,
+			whatsapp,
+			queue,
+			persistence,
+		);
+		return singleton;
+	}
+
+	const state = new PilotStateStore(config.PILOT_STATE_DB_PATH);
 	const whatsapp = new WhatsAppCloudProvider(config, state, (id) =>
 		hubspot.resolveMessagingRecipient(id),
 	);
