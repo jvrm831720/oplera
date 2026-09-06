@@ -1,3 +1,4 @@
+import { ThemeProvider } from "next-themes";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { McpProvider } from "./context.tsx";
@@ -13,8 +14,10 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
 	<StrictMode>
-		<McpProvider>
-			<AppRouter />
-		</McpProvider>
+		<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+			<McpProvider>
+				<AppRouter />
+			</McpProvider>
+		</ThemeProvider>
 	</StrictMode>,
 );
