@@ -19,6 +19,24 @@ describe("HubSpot CRM provider", () => {
 		expect(candidate?.channel).toBe("whatsapp");
 	});
 
+	test("reuses the existing provider for Seller Copilot identity and resolution", async () => {
+		const provider = new HubSpotCRMProvider(
+			pilotTestConfig(),
+			hubSpotFixtureFetch(),
+			() => new Date("2026-09-07T15:00:00.000Z"),
+		);
+		const source = await provider.getSellerCopilotSource("100");
+		expect(source?.identity.contactId).toBe("200");
+		expect(source?.identity.email).toBe("marina@example.com");
+		expect(source?.identity.phone).toBe("+5511999999999");
+		expect(source?.deal.dealId).toBe("100");
+		const matches = await provider.searchSellerCopilotSources({
+			phone: "+55 (11) 99999-9999",
+		});
+		expect(matches).toHaveLength(1);
+		expect(matches[0]?.score).toBe(100);
+	});
+
 	test("rejects a deal outside the pilot allowlist", async () => {
 		const provider = new HubSpotCRMProvider(
 			pilotTestConfig(),

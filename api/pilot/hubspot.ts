@@ -23,11 +23,51 @@ interface HubSpotRecord {
 	associations?: Record<string, { results?: HubSpotAssociationResult[] }>;
 }
 
-interface NormalizedActivity {
+export interface HubSpotActivity {
+	id: string;
 	type: "notes" | "calls" | "emails" | "meetings";
 	timestamp: string;
 	text: string;
 	direction?: "inbound" | "outbound";
+}
+
+export interface HubSpotCopilotSearchInput {
+	phone?: string;
+	name?: string;
+	email?: string;
+	company?: string;
+	query?: string;
+}
+
+export interface HubSpotSellerCopilotSource {
+	candidate: RecoveryCandidate;
+	identity: {
+		contactId: string | null;
+		name: string;
+		phone: string | null;
+		email: string | null;
+		role: string | null;
+		companyId: string | null;
+		company: string;
+	};
+	deal: {
+		dealId: string;
+		dealName: string;
+		stage: string;
+		amount: number;
+		currency: string;
+		owner: string;
+		lastActivityAt: string;
+	};
+	activities: HubSpotActivity[];
+	fetchedAt: string;
+}
+
+interface OpportunityBundle {
+	deal: HubSpotRecord;
+	contacts: HubSpotRecord[];
+	companies: HubSpotRecord[];
+	activities: HubSpotActivity[];
 }
 
 type FetchLike = typeof fetch;
@@ -45,10 +85,7 @@ function safeDate(value: string | null | undefined, fallback: string): string {
 	return Number.isNaN(parsed) ? fallback : new Date(parsed).toISOString();
 }
 
-function activityText(
-	type: NormalizedActivity["type"],
-	record: HubSpotRecord,
-): string {
+function activityText(type: HubSpotActivity["type"], record: HubSpotRecord): string {
 	const p = record.properties;
 	if (type === "notes") return stripHtml(p.hs_note_body ?? "");
 	if (type === "calls") return stripHtml(p.hs_call_body ?? "");
@@ -58,7 +95,7 @@ function activityText(
 }
 
 function activityDirection(
-	type: NormalizedActivity["type"],
+	type: HubSpotActivity["type"],
 	record: HubSpotRecord,
 ): "inbound" | "outbound" | undefined {
 	const value =
@@ -80,9 +117,7 @@ function deriveLostReason(text: string): RecoverySignals["lostReason"] {
 	return text.trim() ? "other" : "none";
 }
 
-function parseOpleraConversation(
-	activities: NormalizedActivity[],
-): ConversationMessage[] {
+function parseOpleraConversation(activities: HubSpotActivity[]): ConversationMessage[] {
 	const messages: ConversationMessage[] = [];
 	for (const activity of activities) {
 		if (activity.type !== "notes") continue;
@@ -109,6 +144,61 @@ function parseOpleraConversation(
 	);
 }
 
+function normalizeSearch(value: string | null | undefined): string {
+	return (value ?? "")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function activityLabel(type: HubSpotActivity["type"]): string {
+	return {
+		notes: "nota",
+		calls: "ligação",
+		emails: "e-mail",
+		meetings: "reunião",
+	}[type];
+}
+
+function scoreSearch(
+	source: HubSpotSellerCopilotSource,
+	input: HubSpotCopilotSearchInput,
+): number {
+	let score = 0;
+	const phone = normalizePhone(input.phone ?? "");
+	if (phone && source.identity.phone === phone) score = Math.max(score, 100);
+	const email = normalizeSearch(input.email);
+	if (email && normalizeSearch(source.identity.email) === email)
+		score = Math.max(score, 100);
+	const name = normalizeSearch(input.name);
+	const sourceName = normalizeSearch(source.identity.name);
+	if (name) {
+		if (sourceName === name) score = Math.max(score, 90);
+		else if (sourceName.includes(name) || name.includes(sourceName))
+			score = Math.max(score, 72);
+	}
+	const company = normalizeSearch(input.company);
+	const sourceCompany = normalizeSearch(source.identity.company);
+	if (company && (sourceCompany === company || sourceCompany.includes(company)))
+		score += 15;
+	const query = normalizeSearch(input.query);
+	if (query) {
+		const fields = [
+			sourceName,
+			sourceCompany,
+			normalizeSearch(source.identity.email),
+			normalizeSearch(source.identity.phone),
+			normalizeSearch(source.deal.dealName),
+		];
+		if (fields.some((field) => field === query)) score = Math.max(score, 90);
+		else if (fields.some((field) => field.includes(query)))
+			score = Math.max(score, 65);
+	}
+	return Math.min(score, 100);
+}
+
 export class HubSpotCRMProvider implements CRMProvider {
 	private readonly apiBase = "https://api.hubapi.com";
 
@@ -126,128 +216,57 @@ export class HubSpotCRMProvider implements CRMProvider {
 	}
 
 	async getOpportunityContext(id: string): Promise<RecoveryCandidate | null> {
-		this.assertAllowedDeal(id);
-		const deal = await this.getDeal(id);
-		if (!deal) return null;
-		const contacts = await this.readAssociated(deal, "contacts", [
-			"firstname",
-			"lastname",
-			"email",
-			"phone",
-			"mobilephone",
-		]);
-		const companies = await this.readAssociated(deal, "companies", ["name"]);
-		const activities = await this.readActivities(deal);
-		const contact = contacts[0];
-		const company = companies[0];
-		const reference = this.now();
-		const fallbackTimestamp =
-			deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
-		const latestActivityMs = Math.max(
-			Date.parse(fallbackTimestamp) || 0,
-			...activities.map((item) => Date.parse(item.timestamp) || 0),
-		);
-		const lastActivity = new Date(
-			latestActivityMs || reference.getTime(),
-		).toISOString();
-		const daysInactive = Math.max(
-			0,
-			Math.floor((reference.getTime() - Date.parse(lastActivity)) / 86_400_000),
-		);
-		const combinedText = [
-			deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
-			...activities.map((item) => item.text),
-		].join("\n");
-		const conversation = parseOpleraConversation(activities);
-		const lastConversation = conversation.at(-1);
-		const signals: RecoverySignals = {
-			previousEngagement: activities.length > 0,
-			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(
-				combinedText,
-			),
-			explicitBuyingQuestion:
-				/quanto|preço|valor|fechar|contrato|começar|iniciar|pagamento/i.test(
-					combinedText,
-				),
-			knownObjection: /budget|orçamento|sem verba|preço|caro|objeção/i.test(
-				combinedText,
-			),
-			sellerDropped: Boolean(
-				lastConversation?.direction === "inbound" && daysInactive >= 2,
-			),
-			lostReason: deriveLostReason(
-				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ??
-					combinedText,
-			),
-		};
-		const storedStatus =
-			deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ??
-			"discovered";
-		const parsedStatus = recoveryStatusSchema.safeParse(storedStatus);
-		const status: RecoveryStatus = parsedStatus.success
-			? parsedStatus.data
-			: "discovered";
-		const optedOut =
-			status === "suppressed" || /\[OPLERA_OPT_OUT\]/i.test(combinedText);
-		const activeHumanConversation =
-			(
-				deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? ""
-			).toLowerCase() === "true";
-		const score = scoreRecoveryCandidate({
-			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
-			daysInactive,
-			signals,
-			optedOut,
-			activeHumanConversation,
-		});
-		const attempt = Math.max(
-			0,
-			Number.parseInt(
-				deal.properties[this.config.HUBSPOT_RECOVERY_ATTEMPTS_PROPERTY] ?? "0",
-				10,
-			) || 0,
-		);
-		const contactName =
-			`${contact?.properties.firstname ?? ""} ${contact?.properties.lastname ?? ""}`.trim() ||
-			contact?.properties.email ||
-			`HubSpot contact ${contact?.id ?? "unknown"}`;
+		const bundle = await this.loadOpportunityBundle(id);
+		return bundle ? this.candidateFromBundle(bundle) : null;
+	}
 
+	async getSellerCopilotSource(
+		id: string,
+	): Promise<HubSpotSellerCopilotSource | null> {
+		const bundle = await this.loadOpportunityBundle(id);
+		if (!bundle) return null;
+		const candidate = this.candidateFromBundle(bundle);
+		const contact = bundle.contacts[0];
+		const company = bundle.companies[0];
+		const phone = normalizePhone(
+			contact?.properties.mobilephone || contact?.properties.phone || "",
+		);
 		return {
-			id: deal.id,
-			crmId: deal.id,
-			contactName,
-			company: company?.properties.name || "Unknown company",
-			dealName: deal.properties.dealname || `HubSpot deal ${deal.id}`,
-			pipelineStage: deal.properties.dealstage || "unknown",
-			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
-			daysInactive,
-			lastActivity,
-			originalReason:
-				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
-			recoveryScore: score.score,
-			reasonCode: score.reasonCode,
-			reasonSummary: score.reasonSummary,
-			status: optedOut ? "suppressed" : status,
-			nextAction:
-				attempt === 0
-					? "Human approval required before pilot first contact."
-					: score.reasonSummary,
-			attempt,
-			assignee: deal.properties.hubspot_owner_id || "unassigned",
-			channel: "whatsapp",
-			evidence: [
-				`HubSpot deal ${deal.id}`,
-				`Activities imported: ${activities.length}`,
-				...activities
-					.filter((item) => item.text)
-					.slice(-8)
-					.map((item) => `${item.type}: ${item.text.slice(0, 180)}`),
-			].slice(0, 20),
-			conversation,
-			signals,
-			optedOut,
-			activeHumanConversation,
+			candidate,
+			identity: {
+				contactId: contact?.id ?? null,
+				name: candidate.contactName,
+				phone: phone || null,
+				email: contact?.properties.email || null,
+				role: contact?.properties.jobtitle || null,
+				companyId: company?.id ?? null,
+				company: candidate.company,
+			},
+			deal: {
+				dealId: bundle.deal.id,
+				dealName: candidate.dealName,
+				stage: candidate.pipelineStage,
+				amount: candidate.amount,
+				currency: bundle.deal.properties.hs_currency_code || "BRL",
+				owner: candidate.assignee,
+				lastActivityAt: candidate.lastActivity,
+			},
+			activities: bundle.activities,
+			fetchedAt: this.now().toISOString(),
 		};
+	}
+
+	async searchSellerCopilotSources(
+		input: HubSpotCopilotSearchInput,
+	): Promise<Array<{ source: HubSpotSellerCopilotSource; score: number }>> {
+		const sources = await Promise.all(
+			this.config.HUBSPOT_DEAL_IDS.map((id) => this.getSellerCopilotSource(id)),
+		);
+		return sources
+			.filter((source): source is HubSpotSellerCopilotSource => source !== null)
+			.map((source) => ({ source, score: scoreSearch(source, input) }))
+			.filter((item) => item.score > 0)
+			.sort((a, b) => b.score - a.score || a.source.deal.dealId.localeCompare(b.source.deal.dealId));
 	}
 
 	async updateOpportunity(id: string, status: RecoveryStatus): Promise<void> {
@@ -285,11 +304,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 			message.direction === "inbound"
 				? "[OPLERA_INBOUND]"
 				: "[OPLERA_OUTBOUND]";
-		await this.createDealNote(
-			id,
-			`${prefix} ${message.text}`,
-			message.timestamp,
-		);
+		await this.createDealNote(id, `${prefix} ${message.text}`, message.timestamp);
 	}
 
 	async createActivity(id: string, summary: string): Promise<void> {
@@ -335,6 +350,132 @@ export class HubSpotCRMProvider implements CRMProvider {
 		return matches[0] ?? null;
 	}
 
+	private async loadOpportunityBundle(id: string): Promise<OpportunityBundle | null> {
+		this.assertAllowedDeal(id);
+		const deal = await this.getDeal(id);
+		if (!deal) return null;
+		const [contacts, companies, activities] = await Promise.all([
+			this.readAssociated(deal, "contacts", [
+				"firstname",
+				"lastname",
+				"email",
+				"phone",
+				"mobilephone",
+				"jobtitle",
+			]),
+			this.readAssociated(deal, "companies", ["name"]),
+			this.readActivities(deal),
+		]);
+		return { deal, contacts, companies, activities };
+	}
+
+	private candidateFromBundle(bundle: OpportunityBundle): RecoveryCandidate {
+		const { deal, contacts, companies, activities } = bundle;
+		const contact = contacts[0];
+		const company = companies[0];
+		const reference = this.now();
+		const fallbackTimestamp = deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
+		const latestActivityMs = Math.max(
+			Date.parse(fallbackTimestamp) || 0,
+			...activities.map((item) => Date.parse(item.timestamp) || 0),
+		);
+		const lastActivity = new Date(
+			latestActivityMs || reference.getTime(),
+		).toISOString();
+		const daysInactive = Math.max(
+			0,
+			Math.floor((reference.getTime() - Date.parse(lastActivity)) / 86_400_000),
+		);
+		const combinedText = [
+			deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
+			...activities.map((item) => item.text),
+		].join("\n");
+		const conversation = parseOpleraConversation(activities);
+		const lastConversation = conversation.at(-1);
+		const signals: RecoverySignals = {
+			previousEngagement: activities.length > 0,
+			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(combinedText),
+			explicitBuyingQuestion:
+				/quanto|preço|valor|fechar|contrato|começar|iniciar|pagamento/i.test(
+					combinedText,
+				),
+			knownObjection: /budget|orçamento|sem verba|preço|caro|objeção/i.test(
+				combinedText,
+			),
+			sellerDropped: Boolean(
+				lastConversation?.direction === "inbound" && daysInactive >= 2,
+			),
+			lostReason: deriveLostReason(
+				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? combinedText,
+			),
+		};
+		const storedStatus =
+			deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ?? "discovered";
+		const parsedStatus = recoveryStatusSchema.safeParse(storedStatus);
+		const status: RecoveryStatus = parsedStatus.success
+			? parsedStatus.data
+			: "discovered";
+		const optedOut =
+			status === "suppressed" || /\[OPLERA_OPT_OUT\]/i.test(combinedText);
+		const activeHumanConversation =
+			(deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? "").toLowerCase() ===
+			"true";
+		const score = scoreRecoveryCandidate({
+			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
+			daysInactive,
+			signals,
+			optedOut,
+			activeHumanConversation,
+		});
+		const attempt = Math.max(
+			0,
+			Number.parseInt(
+				deal.properties[this.config.HUBSPOT_RECOVERY_ATTEMPTS_PROPERTY] ?? "0",
+				10,
+			) || 0,
+		);
+		const contactName =
+			`${contact?.properties.firstname ?? ""} ${contact?.properties.lastname ?? ""}`.trim() ||
+			contact?.properties.email ||
+			`Contato HubSpot ${contact?.id ?? "desconhecido"}`;
+
+		return {
+			id: deal.id,
+			crmId: deal.id,
+			contactName,
+			company: company?.properties.name || "Empresa não informada",
+			dealName: deal.properties.dealname || `Negócio HubSpot ${deal.id}`,
+			pipelineStage: deal.properties.dealstage || "desconhecido",
+			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
+			daysInactive,
+			lastActivity,
+			originalReason: deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
+			recoveryScore: score.score,
+			reasonCode: score.reasonCode,
+			reasonSummary: score.reasonSummary,
+			status: optedOut ? "suppressed" : status,
+			nextAction:
+				attempt === 0
+					? "Requer aprovação humana antes do primeiro contato do piloto."
+					: score.reasonSummary,
+			attempt,
+			assignee: deal.properties.hubspot_owner_id || "não atribuído",
+			channel: "whatsapp",
+			evidence: [
+				`Negócio HubSpot ${deal.id}`,
+				`Atividades importadas: ${activities.length}`,
+				...activities
+					.filter((item) => item.text)
+					.slice(-8)
+					.map((item) => `${activityLabel(item.type)}: ${item.text.slice(0, 180)}`),
+			].slice(0, 20),
+			conversation,
+			signals,
+			optedOut,
+			activeHumanConversation,
+		};
+	}
+
 	private assertAllowedDeal(id: string): void {
 		if (!this.config.HUBSPOT_DEAL_IDS.includes(id))
 			throw new Error("pilot_deal_not_allowlisted");
@@ -346,6 +487,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 			"dealstage",
 			"pipeline",
 			"amount",
+			"hs_currency_code",
 			"hubspot_owner_id",
 			this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY,
 			this.config.HUBSPOT_RECOVERY_ATTEMPTS_PROPERTY,
@@ -367,11 +509,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		}
 	}
 
-	private async readActivities(
-		deal: HubSpotRecord,
-	): Promise<NormalizedActivity[]> {
+	private async readActivities(deal: HubSpotRecord): Promise<HubSpotActivity[]> {
 		const definitions: Array<{
-			type: NormalizedActivity["type"];
+			type: HubSpotActivity["type"];
 			properties: string[];
 		}> = [
 			{ type: "notes", properties: ["hs_timestamp", "hs_note_body"] },
@@ -403,7 +543,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 				],
 			},
 		];
-		const output: NormalizedActivity[] = [];
+		const output: HubSpotActivity[] = [];
 		for (const definition of definitions) {
 			const records = await this.readAssociated(
 				deal,
@@ -412,6 +552,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 			);
 			for (const record of records) {
 				output.push({
+					id: record.id,
 					type: definition.type,
 					timestamp: safeDate(
 						record.properties.hs_timestamp,
@@ -422,9 +563,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 				});
 			}
 		}
-		return output.sort(
-			(a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
-		);
+		return output.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
 	}
 
 	private async readAssociated(
@@ -432,8 +571,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 		type: string,
 		properties: string[],
 	): Promise<HubSpotRecord[]> {
-		const ids =
-			deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
+		const ids = deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
 		if (!ids.length) return [];
 		const results: HubSpotRecord[] = [];
 		for (let index = 0; index < ids.length; index += 100) {
@@ -444,7 +582,7 @@ export class HubSpotCRMProvider implements CRMProvider {
 					method: "POST",
 					body: JSON.stringify({
 						properties,
-						inputs: chunk.map((id) => ({ id })),
+						inputs: chunk.map((itemId) => ({ id: itemId })),
 					}),
 				},
 			);
