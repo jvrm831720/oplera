@@ -15,7 +15,7 @@ Oplera V0.4.2 includes substantial portions of frontend code ported and adapted 
 - License: MIT License
 - Copyright (c) 2026 Comp AI
 
-Ported material includes visual design tokens and selected UI/layout primitives derived from `packages/ui`, plus shell and agent-composer interaction patterns from `apps/app/components`. Imports, runtime bindings, product copy, navigation, icons and branding were adapted for Oplera's React/Vite frontend. Comp AI logos, favicons, trademarks, proprietary deployment configuration, authentication, database logic, server actions and demo identities are not reused.
+Ported material includes visual design tokens and selected UI/layout primitives derived from `packages/ui`, plus shell and agent-composer interaction patterns from `apps/app/components`. Imports, runtime bindings, product copy, navigation, icons and branding were adapted for Oplera's React/Vite frontend. Comp AI logos, favicons, trademarks, proprietary deployment configuration, authentication, database logic, server actions and demo identities are not reused. No Comp AI brand image asset is distributed by this port.
 
 The upstream MIT license is reproduced below as required for substantial portions of the Software:
 
