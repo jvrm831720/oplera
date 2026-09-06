@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button.tsx";
 import {
 	Command,
 	CommandDialog,
@@ -24,14 +24,14 @@ import {
 	CommandItem,
 	CommandList,
 	CommandShortcut,
-} from "@/components/ui/command";
+} from "@/components/ui/command.tsx";
 import {
 	Sheet,
 	SheetContent,
 	SheetHeader,
 	SheetTitle,
-} from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+} from "@/components/ui/sheet.tsx";
+import { cn } from "@/lib/utils.ts";
 
 export type OpleraSection =
 	| "overview"
@@ -99,11 +99,16 @@ function NavigationButtons({
 				className={cn(
 					"text-muted-foreground",
 					mobile && "w-full justify-start gap-3",
-					active && "bg-muted text-foreground hover:bg-muted hover:text-foreground",
+					active &&
+						"bg-muted text-foreground hover:bg-muted hover:text-foreground",
 				)}
 			>
 				<Icon className="size-4" />
-				{mobile ? <span>{item.label}</span> : <span className="sr-only">{item.label}</span>}
+				{mobile ? (
+					<span>{item.label}</span>
+				) : (
+					<span className="sr-only">{item.label}</span>
+				)}
 			</Button>
 		);
 	});
@@ -198,8 +203,7 @@ export function OpleraShell({
 						<span className="ml-2 text-[10px] text-muted-foreground">⌘K</span>
 					</Button>
 					<div className="hidden items-center gap-1.5 px-1 text-[10px] text-muted-foreground lg:flex">
-						<CheckCircle2 className="size-3.5" />
-						V{version} · Demo
+						<CheckCircle2 className="size-3.5" />V{version} · Demo
 					</div>
 					<ThemeButton />
 				</div>
@@ -212,7 +216,10 @@ export function OpleraShell({
 				>
 					<NavigationButtons page={page} onNavigate={navigate} />
 					<div className="mt-auto flex flex-col items-center gap-2 px-2 pb-1">
-						<div className="flex size-8 items-center justify-center rounded-md border bg-card text-muted-foreground" title={`Agent ${agentStatus}`}>
+						<div
+							className="flex size-8 items-center justify-center rounded-md border bg-card text-muted-foreground"
+							title={`Agent ${agentStatus}`}
+						>
 							<Bot className="size-4" />
 						</div>
 					</div>
@@ -220,7 +227,12 @@ export function OpleraShell({
 				<div className="min-w-0 flex-1 overflow-hidden">
 					{children}
 					<footer className="border-t px-6 py-3 text-[10px] text-muted-foreground">
-						Generated {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(generatedAt))}. Orchestration continues server-side.
+						Generated{" "}
+						{new Intl.DateTimeFormat("pt-BR", {
+							dateStyle: "short",
+							timeStyle: "short",
+						}).format(new Date(generatedAt))}
+						. Orchestration continues server-side.
 					</footer>
 				</div>
 			</div>
@@ -236,7 +248,7 @@ export function OpleraShell({
 					<nav className="flex flex-col gap-1 p-2">
 						<NavigationButtons page={page} onNavigate={navigate} mobile />
 					</nav>
-			</SheetContent>
+				</SheetContent>
 			</Sheet>
 
 			<CommandDialog
