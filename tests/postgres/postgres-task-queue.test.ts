@@ -37,7 +37,7 @@ postgresTest(
 		try {
 			const queueA = new PostgresTaskQueue(sqlA, "test");
 			const queueB = new PostgresTaskQueue(sqlB, "test");
-			const pending = task();
+			const pending = task({ priority: 10_000 });
 			await queueA.enqueue(pending);
 
 			const [claimedA, claimedB] = await Promise.all([
@@ -58,9 +58,10 @@ postgresTest("postgres queue recovers an expired lease", async () => {
 	const sql = createDatabaseClient(requireDatabaseUrl());
 	try {
 		const queue = new PostgresTaskQueue(sql, "test");
-		const pending = task();
+		const pending = task({ priority: 20_000 });
 		await queue.enqueue(pending);
 		const first = await queue.claimDue("worker-a", NOW, 1, 60_000);
+		expect(first[0]?.id).toBe(pending.id);
 		expect(first[0]?.leasedBy).toBe("worker-a");
 
 		const later = "2026-09-06T12:02:00.000Z";
@@ -79,9 +80,10 @@ postgresTest(
 		const sql = createDatabaseClient(requireDatabaseUrl());
 		try {
 			const queue = new PostgresTaskQueue(sql, "test");
-			const retryTask = task({ maxAttempts: 2 });
+			const retryTask = task({ maxAttempts: 2, priority: 30_000 });
 			await queue.enqueue(retryTask);
-			await queue.claimDue("worker-retry", NOW, 1);
+			const first = await queue.claimDue("worker-retry", NOW, 1);
+			expect(first[0]?.id).toBe(retryTask.id);
 			await queue.markRunning(retryTask.id, "worker-retry");
 			const retry = await queue.fail(
 				retryTask.id,
@@ -93,7 +95,12 @@ postgresTest(
 			expect(retry.status).toBe("pending");
 			expect(retry.dueAt).toBe("2026-09-06T12:01:00.000Z");
 
-			await queue.claimDue("worker-retry", "2026-09-06T12:01:00.000Z", 1);
+			const second = await queue.claimDue(
+				"worker-retry",
+				"2026-09-06T12:01:00.000Z",
+				1,
+			);
+			expect(second[0]?.id).toBe(retryTask.id);
 			await queue.markRunning(retryTask.id, "worker-retry");
 			const failed = await queue.fail(
 				retryTask.id,
@@ -104,9 +111,10 @@ postgresTest(
 			expect(failed.status).toBe("failed");
 			expect(failed.attempt).toBe(2);
 
-			const successTask = task();
+			const successTask = task({ priority: 31_000 });
 			await queue.enqueue(successTask);
-			await queue.claimDue("worker-success", NOW, 1);
+			const successLease = await queue.claimDue("worker-success", NOW, 1);
+			expect(successLease[0]?.id).toBe(successTask.id);
 			await queue.markRunning(successTask.id, "worker-success");
 			const succeeded = await queue.succeed(
 				successTask.id,
@@ -115,7 +123,7 @@ postgresTest(
 			);
 			expect(succeeded.status).toBe("succeeded");
 
-			const cancelTask = task();
+			const cancelTask = task({ priority: 32_000 });
 			await queue.enqueue(cancelTask);
 			const cancelled = await queue.cancel(cancelTask.id, NOW);
 			expect(cancelled.status).toBe("cancelled");
@@ -132,22 +140,22 @@ postgresTest(
 		try {
 			const queue = new PostgresTaskQueue(sql, "test");
 			const idempotencyKey = `idem-shared-${crypto.randomUUID()}`;
-			const original = task({ idempotencyKey, priority: 10 });
-			const duplicate = task({ idempotencyKey, priority: 999 });
+			const original = task({ idempotencyKey, priority: 40_000 });
+			const duplicate = task({ idempotencyKey, priority: 99_999 });
 			const inserted = await queue.enqueue(original);
 			const deduplicated = await queue.enqueue(duplicate);
 			expect(deduplicated.id).toBe(inserted.id);
 
-			const low = task({ priority: 20 });
-			const high = task({ priority: 900 });
+			const low = task({ priority: 41_000 });
+			const high = task({ priority: 42_000 });
 			const future = task({
-				priority: 1000,
+				priority: 43_000,
 				dueAt: "2026-09-06T13:00:00.000Z",
 			});
 			await queue.enqueue(low);
 			await queue.enqueue(high);
 			await queue.enqueue(future);
-			const claimed = await queue.claimDue("worker-order", NOW, 10);
+			const claimed = await queue.claimDue("worker-order", NOW, 100);
 			const relevant = claimed.filter(
 				(item) => item.id === low.id || item.id === high.id,
 			);
@@ -165,7 +173,7 @@ postgresTest(
 		const url = requireDatabaseUrl();
 		const sqlA = createDatabaseClient(url);
 		const queueA = new PostgresTaskQueue(sqlA, "test");
-		const pending = task();
+		const pending = task({ priority: 50_000 });
 		await queueA.enqueue(pending);
 		await sqlA.close();
 
