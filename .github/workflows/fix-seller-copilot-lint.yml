@@ -1,0 +1,48 @@
+name: Fix Seller Copilot lint
+
+on:
+  push:
+    branches:
+      - feat/seller-copilot-v0.5
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Fix remaining lint findings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          css = Path('extensions/oplera-copilot/sidepanel.css')
+          text = css.read_text()
+          text = text.replace('display: none !important;', 'display: none;')
+          text = text.replace('#loading-state {', '#loading-state:not(.hidden) {')
+          css.write_text(text)
+
+          console = Path('web/tools/recovery/operator-console.tsx')
+          text = console.read_text()
+          text = text.replace('\n\ttaskTypeLabel,', '')
+          console.write_text(text)
+          PY
+      - run: bunx biome check --write .
+      - run: bunx biome ci .
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/fix-seller-copilot-lint.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: fix Seller Copilot lint"
+          git push origin HEAD:feat/seller-copilot-v0.5
