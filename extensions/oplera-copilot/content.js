@@ -18,7 +18,8 @@ function detectCurrentConversation() {
 	]
 		.map(visibleText)
 		.filter((value) => value && value.length <= 160);
-	const title = candidates.find((value) => !/^\d{1,2}:\d{2}$/.test(value)) || null;
+	const title =
+		candidates.find((value) => !/^\d{1,2}:\d{2}$/.test(value)) || null;
 	const phoneMatch = title?.match(/\+?\d[\d\s().-]{7,}\d/);
 	return {
 		title,

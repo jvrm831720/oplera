@@ -7,8 +7,8 @@ import type {
 import type { CopilotConfig } from "./config.ts";
 import { NullInternalRevenueContextReader } from "./internal-context.ts";
 import {
-	RevenueContextService,
 	type RevenueContextHubSpotProvider,
+	RevenueContextService,
 } from "./revenue-context-service.ts";
 
 function source(): HubSpotSellerCopilotSource {

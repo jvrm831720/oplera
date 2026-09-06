@@ -85,7 +85,10 @@ function safeDate(value: string | null | undefined, fallback: string): string {
 	return Number.isNaN(parsed) ? fallback : new Date(parsed).toISOString();
 }
 
-function activityText(type: HubSpotActivity["type"], record: HubSpotRecord): string {
+function activityText(
+	type: HubSpotActivity["type"],
+	record: HubSpotRecord,
+): string {
 	const p = record.properties;
 	if (type === "notes") return stripHtml(p.hs_note_body ?? "");
 	if (type === "calls") return stripHtml(p.hs_call_body ?? "");
@@ -117,7 +120,9 @@ function deriveLostReason(text: string): RecoverySignals["lostReason"] {
 	return text.trim() ? "other" : "none";
 }
 
-function parseOpleraConversation(activities: HubSpotActivity[]): ConversationMessage[] {
+function parseOpleraConversation(
+	activities: HubSpotActivity[],
+): ConversationMessage[] {
 	const messages: ConversationMessage[] = [];
 	for (const activity of activities) {
 		if (activity.type !== "notes") continue;
@@ -266,7 +271,11 @@ export class HubSpotCRMProvider implements CRMProvider {
 			.filter((source): source is HubSpotSellerCopilotSource => source !== null)
 			.map((source) => ({ source, score: scoreSearch(source, input) }))
 			.filter((item) => item.score > 0)
-			.sort((a, b) => b.score - a.score || a.source.deal.dealId.localeCompare(b.source.deal.dealId));
+			.sort(
+				(a, b) =>
+					b.score - a.score ||
+					a.source.deal.dealId.localeCompare(b.source.deal.dealId),
+			);
 	}
 
 	async updateOpportunity(id: string, status: RecoveryStatus): Promise<void> {
@@ -304,7 +313,11 @@ export class HubSpotCRMProvider implements CRMProvider {
 			message.direction === "inbound"
 				? "[OPLERA_INBOUND]"
 				: "[OPLERA_OUTBOUND]";
-		await this.createDealNote(id, `${prefix} ${message.text}`, message.timestamp);
+		await this.createDealNote(
+			id,
+			`${prefix} ${message.text}`,
+			message.timestamp,
+		);
 	}
 
 	async createActivity(id: string, summary: string): Promise<void> {
@@ -350,7 +363,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		return matches[0] ?? null;
 	}
 
-	private async loadOpportunityBundle(id: string): Promise<OpportunityBundle | null> {
+	private async loadOpportunityBundle(
+		id: string,
+	): Promise<OpportunityBundle | null> {
 		this.assertAllowedDeal(id);
 		const deal = await this.getDeal(id);
 		if (!deal) return null;
@@ -374,7 +389,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const contact = contacts[0];
 		const company = companies[0];
 		const reference = this.now();
-		const fallbackTimestamp = deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
+		const fallbackTimestamp =
+			deal.updatedAt ?? deal.createdAt ?? reference.toISOString();
 		const latestActivityMs = Math.max(
 			Date.parse(fallbackTimestamp) || 0,
 			...activities.map((item) => Date.parse(item.timestamp) || 0),
@@ -394,7 +410,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const lastConversation = conversation.at(-1);
 		const signals: RecoverySignals = {
 			previousEngagement: activities.length > 0,
-			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(combinedText),
+			proposalSent: /proposta|proposal|quote|orçamento enviado/i.test(
+				combinedText,
+			),
 			explicitBuyingQuestion:
 				/quanto|preço|valor|fechar|contrato|começar|iniciar|pagamento/i.test(
 					combinedText,
@@ -406,11 +424,13 @@ export class HubSpotCRMProvider implements CRMProvider {
 				lastConversation?.direction === "inbound" && daysInactive >= 2,
 			),
 			lostReason: deriveLostReason(
-				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? combinedText,
+				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ??
+					combinedText,
 			),
 		};
 		const storedStatus =
-			deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ?? "discovered";
+			deal.properties[this.config.HUBSPOT_RECOVERY_STATUS_PROPERTY] ??
+			"discovered";
 		const parsedStatus = recoveryStatusSchema.safeParse(storedStatus);
 		const status: RecoveryStatus = parsedStatus.success
 			? parsedStatus.data
@@ -418,8 +438,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		const optedOut =
 			status === "suppressed" || /\[OPLERA_OPT_OUT\]/i.test(combinedText);
 		const activeHumanConversation =
-			(deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? "").toLowerCase() ===
-			"true";
+			(
+				deal.properties[this.config.HUBSPOT_ACTIVE_HUMAN_PROPERTY] ?? ""
+			).toLowerCase() === "true";
 		const score = scoreRecoveryCandidate({
 			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
 			daysInactive,
@@ -449,7 +470,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 			amount: Number.parseFloat(deal.properties.amount ?? "0") || 0,
 			daysInactive,
 			lastActivity,
-			originalReason: deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
+			originalReason:
+				deal.properties[this.config.HUBSPOT_LOST_REASON_PROPERTY] ?? "",
 			recoveryScore: score.score,
 			reasonCode: score.reasonCode,
 			reasonSummary: score.reasonSummary,
@@ -467,7 +489,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 				...activities
 					.filter((item) => item.text)
 					.slice(-8)
-					.map((item) => `${activityLabel(item.type)}: ${item.text.slice(0, 180)}`),
+					.map(
+						(item) => `${activityLabel(item.type)}: ${item.text.slice(0, 180)}`,
+					),
 			].slice(0, 20),
 			conversation,
 			signals,
@@ -509,7 +533,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 		}
 	}
 
-	private async readActivities(deal: HubSpotRecord): Promise<HubSpotActivity[]> {
+	private async readActivities(
+		deal: HubSpotRecord,
+	): Promise<HubSpotActivity[]> {
 		const definitions: Array<{
 			type: HubSpotActivity["type"];
 			properties: string[];
@@ -563,7 +589,9 @@ export class HubSpotCRMProvider implements CRMProvider {
 				});
 			}
 		}
-		return output.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+		return output.sort(
+			(a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
+		);
 	}
 
 	private async readAssociated(
@@ -571,7 +599,8 @@ export class HubSpotCRMProvider implements CRMProvider {
 		type: string,
 		properties: string[],
 	): Promise<HubSpotRecord[]> {
-		const ids = deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
+		const ids =
+			deal.associations?.[type]?.results?.map((item) => item.id) ?? [];
 		if (!ids.length) return [];
 		const results: HubSpotRecord[] = [];
 		for (let index = 0; index < ids.length; index += 100) {

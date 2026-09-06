@@ -39,7 +39,8 @@ function EmptyState() {
 				</div>
 				<h1 className="mt-4 text-lg font-semibold">Oplera</h1>
 				<p className="mt-2 text-xs leading-5 text-[#6f756e]">
-					Agente de Receita. Execute uma análise ou abra <strong>/demo</strong> para ver o ciclo completo.
+					Agente de Receita. Execute uma análise ou abra <strong>/demo</strong>{" "}
+					para ver o ciclo completo.
 				</p>
 			</div>
 		</div>
@@ -60,7 +61,9 @@ export default function RecoveryPage() {
 	if (state.status === "initializing")
 		return <LoadingState label="Conectando ao runtime da Oplera..." />;
 	if (state.status === "tool-input")
-		return <LoadingState label="Avaliando o contexto de recuperação de receita..." />;
+		return (
+			<LoadingState label="Avaliando o contexto de recuperação de receita..." />
+		);
 	if (state.status === "connected") return <EmptyState />;
 	if (state.status === "error") {
 		return (

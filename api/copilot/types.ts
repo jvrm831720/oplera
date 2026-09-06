@@ -1,9 +1,9 @@
+import type { ConversationDecision } from "../autonomy/conversation-agent.ts";
 import type {
 	PolicyDecision,
 	RecoveryReasonCode,
 	RecoveryStatus,
 } from "../autonomy/types.ts";
-import type { ConversationDecision } from "../autonomy/conversation-agent.ts";
 
 export type CopilotUrgency = "low" | "medium" | "high" | "critical";
 export type CopilotTimelineSource = "hubspot" | "whatsapp" | "oplera";
@@ -117,6 +117,10 @@ export interface CopilotResolveMatch {
 }
 
 export type CopilotResolveResult =
-	| { status: "resolved"; match: CopilotResolveMatch; matches: CopilotResolveMatch[] }
+	| {
+			status: "resolved";
+			match: CopilotResolveMatch;
+			matches: CopilotResolveMatch[];
+	  }
 	| { status: "ambiguous"; matches: CopilotResolveMatch[] }
 	| { status: "not_found"; matches: [] };

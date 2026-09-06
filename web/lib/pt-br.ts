@@ -129,15 +129,18 @@ const DEMO_TEXT: Record<string, string> = {
 	"Budget objection": "Objeção de orçamento",
 	"Contact opted out": "Contato realizou opt-out",
 	"Human seller currently active": "Vendedor humano em atendimento ativo",
-	"Recovered after timing reactivation": "Recuperada após reativação por timing",
+	"Recovered after timing reactivation":
+		"Recuperada após reativação por timing",
 	"High intent with contract question": "Alta intenção com questão contratual",
 	"proposal sent": "proposta enviada",
-	"customer asked payment terms": "cliente perguntou sobre condições de pagamento",
+	"customer asked payment terms":
+		"cliente perguntou sobre condições de pagamento",
 	"last inbound 2h ago": "última mensagem recebida há 2 horas",
 	"timing objection": "objeção de timing",
 	"positive discovery call": "ligação de descoberta positiva",
 	"no opt-out": "sem opt-out",
-	"customer asked implementation date": "cliente perguntou a data de implementação",
+	"customer asked implementation date":
+		"cliente perguntou a data de implementação",
 	"seller stopped replying": "vendedor deixou de responder",
 	"proposal reviewed": "proposta revisada",
 	"no rejection": "sem rejeição",
@@ -150,7 +153,7 @@ const DEMO_TEXT: Record<string, string> = {
 	"explicit buying intent": "intenção explícita de compra",
 	"contract clause question": "pergunta sobre cláusula contratual",
 	"last inbound < 1h": "última mensagem recebida há menos de 1 hora",
-	"Suppressed": "Suprimida",
+	Suppressed: "Suprimida",
 	"Camila (human)": "Camila (humano)",
 	"Revenue team": "Equipe de Receita",
 };
@@ -198,5 +201,7 @@ export function operationalText(value: string): string {
 }
 
 export function humanizeInternal(value: string): string {
-	return value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+	return value
+		.replaceAll("_", " ")
+		.replace(/^./, (letter) => letter.toUpperCase());
 }

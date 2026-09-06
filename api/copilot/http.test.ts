@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { copilotConfigSchema, type CopilotConfig } from "./config.ts";
+import { type CopilotConfig, copilotConfigSchema } from "./config.ts";
 import { handleSellerCopilotHttp } from "./http.ts";
 import type { RevenueContextService } from "./revenue-context-service.ts";
 import { SellerCopilotRuntime } from "./runtime.ts";

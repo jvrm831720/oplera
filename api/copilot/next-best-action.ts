@@ -29,7 +29,9 @@ export interface SellerCopilotEngineInput {
 
 function preview(value: string, max = 160): string {
 	const normalized = value.replace(/\s+/g, " ").trim();
-	return normalized.length <= max ? normalized : `${normalized.slice(0, max - 1)}…`;
+	return normalized.length <= max
+		? normalized
+		: `${normalized.slice(0, max - 1)}…`;
 }
 
 function isUnansweredInbound(input: SellerCopilotEngineInput): boolean {
@@ -44,12 +46,15 @@ function isUnansweredInbound(input: SellerCopilotEngineInput): boolean {
 function baseEvidence(input: SellerCopilotEngineInput): string[] {
 	const evidence: string[] = [];
 	if (input.latestInbound)
-		evidence.push(`Última mensagem recebida: “${preview(input.latestInbound.text)}”`);
+		evidence.push(
+			`Última mensagem recebida: “${preview(input.latestInbound.text)}”`,
+		);
 	if (input.nextTask)
 		evidence.push(
 			`Tarefa ${input.nextTask.taskType.replaceAll("_", " ")} com vencimento em ${input.nextTask.dueAt}.`,
 		);
-	if (input.candidate.reasonSummary) evidence.push(input.candidate.reasonSummary);
+	if (input.candidate.reasonSummary)
+		evidence.push(input.candidate.reasonSummary);
 	return evidence.slice(0, 3);
 }
 

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { loadCopilotConfig, type CopilotConfig } from "./config.ts";
+import { type CopilotConfig, loadCopilotConfig } from "./config.ts";
 import {
 	getSellerCopilotRuntime,
 	type SellerCopilotRuntime,
@@ -30,7 +30,8 @@ function constantTimeEqual(left: string, right: string): boolean {
 }
 
 function authorized(req: Request, token: string): boolean {
-	const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+	const bearer =
+		req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
 	return constantTimeEqual(bearer, token);
 }
 
@@ -75,8 +76,12 @@ export async function handleSellerCopilotHttp(
 	}
 	const cors = originHeaders(req, config);
 	if (!cors)
-		return Response.json({ error: "copilot_origin_not_allowed" }, { status: 403 });
-	if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+		return Response.json(
+			{ error: "copilot_origin_not_allowed" },
+			{ status: 403 },
+		);
+	if (req.method === "OPTIONS")
+		return new Response(null, { status: 204, headers: cors });
 	if (!authorized(req, config.COPILOT_ACCESS_TOKEN))
 		return json({ error: "unauthorized" }, 401, cors);
 
@@ -118,7 +123,9 @@ export async function handleSellerCopilotHttp(
 		}
 	}
 
-	const contextMatch = url.pathname.match(/^\/api\/v0\.5\/copilot\/context\/([^/]+)$/);
+	const contextMatch = url.pathname.match(
+		/^\/api\/v0\.5\/copilot\/context\/([^/]+)$/,
+	);
 	if (req.method === "GET" && contextMatch) {
 		const opportunityId = decodeURIComponent(contextMatch[1] ?? "");
 		try {
@@ -126,7 +133,12 @@ export async function handleSellerCopilotHttp(
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "unknown_error";
 			return json(
-				{ error: message === "copilot_context_not_found" ? message : "copilot_context_failed" },
+				{
+					error:
+						message === "copilot_context_not_found"
+							? message
+							: "copilot_context_failed",
+				},
 				message === "copilot_context_not_found" ? 404 : 500,
 				cors,
 			);

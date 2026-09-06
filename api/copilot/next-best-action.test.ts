@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { planRecovery } from "../autonomy/planner.ts";
-import type {
-	PolicyDecision,
-	RecoveryCandidate,
-} from "../autonomy/types.ts";
+import type { PolicyDecision, RecoveryCandidate } from "../autonomy/types.ts";
 import { SellerCopilotEngine } from "./next-best-action.ts";
 
 function candidate(
@@ -44,7 +41,10 @@ function candidate(
 	};
 }
 
-const allowed: PolicyDecision = { result: "allowed", reasons: ["policy_passed"] };
+const allowed: PolicyDecision = {
+	result: "allowed",
+	reasons: ["policy_passed"],
+};
 
 function input(
 	overrides: Partial<Parameters<SellerCopilotEngine["decide"]>[0]> = {},
@@ -138,7 +138,8 @@ describe("SellerCopilotEngine", () => {
 					state: "objection_handling",
 					shouldHandoff: false,
 					recommendedAction: "Confirmar orçamento.",
-					draftReply: "Podemos confirmar se orçamento continua sendo o principal ponto?",
+					draftReply:
+						"Podemos confirmar se orçamento continua sendo o principal ponto?",
 				},
 			}),
 		);

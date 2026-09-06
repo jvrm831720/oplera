@@ -35,7 +35,9 @@ import type {
 } from "./types.ts";
 
 export interface RevenueContextHubSpotProvider {
-	getSellerCopilotSource(id: string): Promise<HubSpotSellerCopilotSource | null>;
+	getSellerCopilotSource(
+		id: string,
+	): Promise<HubSpotSellerCopilotSource | null>;
 	searchSellerCopilotSources(
 		input: HubSpotCopilotSearchInput,
 	): Promise<Array<{ source: HubSpotSellerCopilotSource; score: number }>>;
@@ -43,11 +45,15 @@ export interface RevenueContextHubSpotProvider {
 
 function truncate(value: string, max = 220): string {
 	const normalized = value.replace(/\s+/g, " ").trim();
-	return normalized.length <= max ? normalized : `${normalized.slice(0, max - 1)}…`;
+	return normalized.length <= max
+		? normalized
+		: `${normalized.slice(0, max - 1)}…`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-	return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+	return value && typeof value === "object"
+		? (value as Record<string, unknown>)
+		: {};
 }
 
 const INTENTS: ConversationDecision["intent"][] = [
@@ -66,7 +72,8 @@ function persistedDecision(
 ): ConversationDecision | null {
 	if (!decision || decision.decisionType !== "conversation") return null;
 	const [intentValue, stateValue] = decision.decision.split(":");
-	if (!INTENTS.includes(intentValue as ConversationDecision["intent"])) return null;
+	if (!INTENTS.includes(intentValue as ConversationDecision["intent"]))
+		return null;
 	const state = conversationStateSchema.safeParse(stateValue);
 	if (!state.success) return null;
 	const evidence = asRecord(decision.evidence);
@@ -114,7 +121,10 @@ function latestMessage(
 	conversation: ConversationMessage[],
 	direction: ConversationMessage["direction"],
 ): ConversationMessage | null {
-	return [...conversation].reverse().find((item) => item.direction === direction) ?? null;
+	return (
+		[...conversation].reverse().find((item) => item.direction === direction) ??
+		null
+	);
 }
 
 function serviceWindowStatus(
@@ -158,7 +168,10 @@ function timeline(
 	for (const message of internal.messages) {
 		items.push({
 			id: `message:${message.id}`,
-			type: message.direction === "inbound" ? "mensagem_recebida" : "mensagem_enviada",
+			type:
+				message.direction === "inbound"
+					? "mensagem_recebida"
+					: "mensagem_enviada",
 			source: message.channel === "whatsapp" ? "whatsapp" : "oplera",
 			timestamp: message.timestamp,
 			summary: truncate(message.content),
@@ -226,13 +239,18 @@ function signals(
 	if (candidate.signals.proposalSent) result.push("Proposta já enviada.");
 	if (candidate.signals.explicitBuyingQuestion)
 		result.push("Há pergunta explícita de compra no histórico.");
-	if (decision?.objection === "budget") result.push("Objeção de orçamento identificada.");
-	if (decision?.objection === "timing") result.push("Objeção de timing identificada.");
-	if (decision?.intent === "positive") result.push("Intenção positiva identificada.");
+	if (decision?.objection === "budget")
+		result.push("Objeção de orçamento identificada.");
+	if (decision?.objection === "timing")
+		result.push("Objeção de timing identificada.");
+	if (decision?.intent === "positive")
+		result.push("Intenção positiva identificada.");
 	if (candidate.signals.sellerDropped)
 		result.push("A conversa ficou sem continuidade do lado vendedor.");
 	if (internal.nextTask)
-		result.push(`Existe tarefa ${internal.nextTask.taskType.replaceAll("_", " ")} na fila.`);
+		result.push(
+			`Existe tarefa ${internal.nextTask.taskType.replaceAll("_", " ")} na fila.`,
+		);
 	if (internal.handoff) result.push("Existe encaminhamento humano aberto.");
 	if (candidate.activeHumanConversation) result.push("Conversa humana ativa.");
 	return [...new Set(result)].slice(0, 8);
@@ -253,8 +271,9 @@ export class RevenueContextService {
 		if (!normalized.length) return { status: "not_found", matches: [] };
 		const topScore = matches[0]?.score ?? 0;
 		const top = matches.filter((item) => item.score === topScore);
-		if (top.length === 1 && topScore >= 70) {
-			const match = resolveMatch(top[0]!.source);
+		const resolved = top[0];
+		if (top.length === 1 && topScore >= 70 && resolved) {
+			const match = resolveMatch(resolved.source);
 			return { status: "resolved", match, matches: normalized };
 		}
 		return { status: "ambiguous", matches: normalized };
@@ -275,7 +294,11 @@ export class RevenueContextService {
 		const decision =
 			storedDecision ??
 			(lastInbound
-				? decideConversationReply(candidate, lastInbound.text, defaultRecoveryPolicy)
+				? decideConversationReply(
+						candidate,
+						lastInbound.text,
+						defaultRecoveryPolicy,
+					)
 				: null);
 		const window = resolveServiceWindow(conversation, new Date(now));
 		const policy = evaluateRecoveryPolicy({
@@ -293,7 +316,10 @@ export class RevenueContextService {
 			messageMode: "free_form",
 			providerSupportsApprovedTemplate: true,
 		});
-		const plan = planRecovery(candidate, defaultRecoveryPolicy.contact.maxAttempts);
+		const plan = planRecovery(
+			candidate,
+			defaultRecoveryPolicy.contact.maxAttempts,
+		);
 		const windowStatus = serviceWindowStatus(window.serviceWindowOpen);
 		const nextBestAction = this.engine.decide({
 			candidate,
@@ -311,14 +337,15 @@ export class RevenueContextService {
 			handoff: internal.handoff,
 			now,
 		});
-		const whatsappFreshness = [
-			lastInbound?.timestamp,
-			lastOutbound?.timestamp,
-			internal.pilotInbound[0]?.processedAt,
-			internal.pilotOutbound[0]?.createdAt,
-		]
-			.filter((value): value is string => Boolean(value))
-			.sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
+		const whatsappFreshness =
+			[
+				lastInbound?.timestamp,
+				lastOutbound?.timestamp,
+				internal.pilotInbound[0]?.processedAt,
+				internal.pilotOutbound[0]?.createdAt,
+			]
+				.filter((value): value is string => Boolean(value))
+				.sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
 		const strategy = internal.session?.strategy ?? plan.strategy;
 
 		return {
@@ -336,8 +363,12 @@ export class RevenueContextService {
 			conversation: {
 				lastInboundAt: lastInbound?.timestamp ?? null,
 				lastOutboundAt: lastOutbound?.timestamp ?? null,
-				lastInboundPreview: lastInbound ? truncate(lastInbound.text, 240) : null,
-				lastOutboundPreview: lastOutbound ? truncate(lastOutbound.text, 240) : null,
+				lastInboundPreview: lastInbound
+					? truncate(lastInbound.text, 240)
+					: null,
+				lastOutboundPreview: lastOutbound
+					? truncate(lastOutbound.text, 240)
+					: null,
 				detectedIntent: decision?.intent ?? null,
 				objection: decision?.objection ?? null,
 				serviceWindowStatus: windowStatus,

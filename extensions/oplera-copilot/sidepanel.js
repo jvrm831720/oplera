@@ -131,7 +131,11 @@ async function activeWhatsAppContext() {
 			tabId: tab.id,
 			title,
 			phone,
-			key: phone ? `phone:${phone}` : title ? `title:${title.toLowerCase()}` : null,
+			key: phone
+				? `phone:${phone}`
+				: title
+					? `title:${title.toLowerCase()}`
+					: null,
 		};
 	} catch {
 		return { tabId: tab.id, title: null, phone: null, key: null };
@@ -147,7 +151,8 @@ async function resolveCurrent(detected) {
 			matches: [],
 		};
 	}
-	if (!detected.phone && !detected.title) return { status: "not_found", matches: [] };
+	if (!detected.phone && !detected.title)
+		return { status: "not_found", matches: [] };
 	return api("/api/v0.5/copilot/resolve", {
 		method: "POST",
 		body: JSON.stringify({
@@ -210,7 +215,10 @@ function renderContext(context) {
 	setText("deal-stage", context.deal.stage);
 	setText("deal-amount", currency(context.deal.amount, context.deal.currency));
 	setText("deal-owner", context.deal.owner);
-	setText("recovery-status", STATUS[context.recovery.status] || context.recovery.status);
+	setText(
+		"recovery-status",
+		STATUS[context.recovery.status] || context.recovery.status,
+	);
 	setText("last-activity", dateTime(context.deal.lastActivityAt));
 	setText("recovery-reason", context.nextBestAction.why);
 	setText(
@@ -221,8 +229,15 @@ function renderContext(context) {
 				: ""
 		}`,
 	);
-	setText("policy-badge", POLICY[context.policies.result] || context.policies.result);
-	renderList("signals-list", context.signals, "Sem sinais recentes relevantes.");
+	setText(
+		"policy-badge",
+		POLICY[context.policies.result] || context.policies.result,
+	);
+	renderList(
+		"signals-list",
+		context.signals,
+		"Sem sinais recentes relevantes.",
+	);
 	setText("next-title", context.nextBestAction.title);
 	setText("next-description", context.nextBestAction.description);
 	setText("next-why", context.nextBestAction.why);
@@ -243,7 +258,9 @@ function renderContext(context) {
 	copy.classList.toggle("hidden", !canCopy);
 	copy.onclick = canCopy
 		? async () => {
-				await navigator.clipboard.writeText(context.nextBestAction.suggestedMessage);
+				await navigator.clipboard.writeText(
+					context.nextBestAction.suggestedMessage,
+				);
 				copy.textContent = "Mensagem copiada";
 				setTimeout(() => {
 					copy.textContent = "Copiar mensagem";
@@ -294,14 +311,17 @@ function showError(error) {
 		return;
 	}
 	const messages = {
-		unauthorized: "Token do Copilot inválido. Revise as configurações do piloto.",
+		unauthorized:
+			"Token do Copilot inválido. Revise as configurações do piloto.",
 		copilot_origin_not_allowed:
 			"Esta extensão não está na lista de origins permitidas pelo backend Oplera.",
-		copilot_context_not_found: "O contexto comercial solicitado não foi encontrado.",
+		copilot_context_not_found:
+			"O contexto comercial solicitado não foi encontrado.",
 	};
 	setText(
 		"error-message",
-		messages[error?.message] || "Verifique a conexão com a Oplera e tente novamente.",
+		messages[error?.message] ||
+			"Verifique a conexão com a Oplera e tente novamente.",
 	);
 	show("error");
 }
@@ -336,25 +356,27 @@ async function refresh() {
 
 document.getElementById("refresh").addEventListener("click", refresh);
 document.getElementById("retry").addEventListener("click", refresh);
-document.getElementById("open-options").addEventListener("click", () =>
-	chrome.runtime.openOptionsPage(),
-);
+document
+	.getElementById("open-options")
+	.addEventListener("click", () => chrome.runtime.openOptionsPage());
 
-document.getElementById("search-form").addEventListener("submit", async (event) => {
-	event.preventDefault();
-	const query = document.getElementById("search-query").value.trim();
-	if (!query) return;
-	try {
-		show("loading");
-		const detected = await activeWhatsAppContext();
-		const result = await api("/api/v0.5/copilot/resolve", {
-			method: "POST",
-			body: JSON.stringify({ query }),
-		});
-		await processResolution(result, detected);
-	} catch (error) {
-		showError(error);
-	}
-});
+document
+	.getElementById("search-form")
+	.addEventListener("submit", async (event) => {
+		event.preventDefault();
+		const query = document.getElementById("search-query").value.trim();
+		if (!query) return;
+		try {
+			show("loading");
+			const detected = await activeWhatsAppContext();
+			const result = await api("/api/v0.5/copilot/resolve", {
+				method: "POST",
+				body: JSON.stringify({ query }),
+			});
+			await processResolution(result, detected);
+		} catch (error) {
+			showError(error);
+		}
+	});
 
 refresh();

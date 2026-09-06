@@ -4,7 +4,7 @@ import {
 	shouldUsePostgres,
 } from "../db/client.ts";
 import { getPilotRuntime } from "../pilot/runtime.ts";
-import { loadCopilotConfig, type CopilotConfig } from "./config.ts";
+import { type CopilotConfig, loadCopilotConfig } from "./config.ts";
 import {
 	NullInternalRevenueContextReader,
 	PostgresInternalRevenueContextReader,

@@ -228,7 +228,8 @@ export function OpleraShell({
 				<div className="min-w-0 flex-1 overflow-hidden">
 					{children}
 					<footer className="border-t px-6 py-3 text-[10px] text-muted-foreground">
-						Gerado em {fullDateTime.format(new Date(generatedAt))}. A orquestração continua executando no servidor.
+						Gerado em {fullDateTime.format(new Date(generatedAt))}. A
+						orquestração continua executando no servidor.
 					</footer>
 				</div>
 			</div>
