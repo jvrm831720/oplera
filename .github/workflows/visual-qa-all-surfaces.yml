@@ -1,0 +1,131 @@
+name: Visual QA all Comp port surfaces
+
+on:
+  push:
+    branches:
+      - feat/comp-ai-frontend-port-v0.4.2
+    paths:
+      - .github/workflows/visual-qa-all-surfaces.yml
+
+permissions:
+  contents: write
+
+jobs:
+  visual-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build:web
+      - name: Start Oplera demo
+        run: |
+          PORT=3001 bun api/main.bun.ts > /tmp/oplera-demo.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/health >/tmp/health.json; then break; fi
+            sleep 1
+          done
+          grep -F '"status":"ok"' /tmp/health.json
+          grep -F '"service":"oplera-revenue"' /tmp/health.json
+      - name: Capture every Oplera surface through Chrome DevTools Protocol
+        run: |
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --remote-debugging-port=9222 --user-data-dir=/tmp/oplera-chrome about:blank >/tmp/chrome.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:9222/json/version >/dev/null; then break; fi
+            sleep 1
+          done
+          mkdir -p visual-qa-all
+          cat >/tmp/capture-surfaces.ts <<'TS'
+          import { writeFile } from "node:fs/promises";
+
+          type Pending = { resolve: (value: any) => void; reject: (error: Error) => void };
+          const target = await fetch("http://127.0.0.1:9222/json/new?http://127.0.0.1:3001/demo", { method: "PUT" }).then((response) => response.json()) as { webSocketDebuggerUrl: string };
+          const ws = new WebSocket(target.webSocketDebuggerUrl);
+          await new Promise<void>((resolve, reject) => {
+            ws.onopen = () => resolve();
+            ws.onerror = () => reject(new Error("cdp websocket failed"));
+          });
+
+          let sequence = 0;
+          const pending = new Map<number, Pending>();
+          ws.onmessage = (event) => {
+            const message = JSON.parse(String(event.data)) as { id?: number; result?: any; error?: { message: string } };
+            if (!message.id) return;
+            const waiter = pending.get(message.id);
+            if (!waiter) return;
+            pending.delete(message.id);
+            if (message.error) waiter.reject(new Error(message.error.message));
+            else waiter.resolve(message.result);
+          };
+
+          function send(method: string, params: Record<string, unknown> = {}) {
+            const id = ++sequence;
+            ws.send(JSON.stringify({ id, method, params }));
+            return new Promise<any>((resolve, reject) => pending.set(id, { resolve, reject }));
+          }
+
+          async function evaluate(expression: string) {
+            return send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
+          }
+
+          async function sleep(ms: number) {
+            await new Promise((resolve) => setTimeout(resolve, ms));
+          }
+
+          async function screenshot(name: string) {
+            const result = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+            const buffer = Buffer.from(result.data, "base64");
+            if (buffer.length < 10_000) throw new Error(`${name} screenshot is unexpectedly small`);
+            await writeFile(`visual-qa-all/${name}.png`, buffer);
+            console.log(`${name}.png ${buffer.length} bytes`);
+          }
+
+          await send("Page.enable");
+          await send("Runtime.enable");
+          await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+          await sleep(1800);
+
+          const surfaces = [
+            ["overview", "Overview"],
+            ["recovery-queue", "Recovery Queue"],
+            ["opportunities", "Opportunities"],
+            ["conversations", "Conversations"],
+            ["policies", "Policies"],
+            ["activity", "Activity"],
+          ] as const;
+
+          for (const [slug, label] of surfaces) {
+            const clicked = await evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find((node) => node.getAttribute('aria-label') === ${JSON.stringify(label)}); if (!button) return false; button.click(); return true; })()`);
+            if (clicked.result?.value !== true) throw new Error(`navigation button not found: ${label}`);
+            await sleep(350);
+            await screenshot(`desktop-${slug}`);
+          }
+
+          await evaluate("document.documentElement.classList.add('dark')");
+          await sleep(250);
+          await screenshot("desktop-activity-dark");
+          await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+          await evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find((node) => node.getAttribute('aria-label') === 'Overview'); if (button) button.click(); document.documentElement.classList.remove('dark'); })()`);
+          await sleep(350);
+          await screenshot("mobile-overview");
+          ws.close();
+          TS
+          bun /tmp/capture-surfaces.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oplera-comp-frontend-all-surfaces
+          path: visual-qa-all/*.png
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/visual-qa-all-surfaces.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/visual-qa-all-surfaces.yml
+          git commit -m "chore: remove all-surfaces visual QA workflow"
+          git push origin HEAD:feat/comp-ai-frontend-port-v0.4.2
