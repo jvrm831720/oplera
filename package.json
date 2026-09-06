@@ -14,6 +14,7 @@
 		"ci:check": "bunx biome ci .",
 		"check": "tsc --noEmit",
 		"test": "bun run build:web && bun test api",
+		"db:migrate": "bun run scripts/db-migrate.ts",
 		"fmt": "biome format --write .",
 		"lint": "biome lint --write .",
 		"dev:worktree": "bun run scripts/dev-worktree.ts",
