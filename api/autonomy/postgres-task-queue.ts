@@ -380,7 +380,7 @@ export class PostgresTaskQueue implements TaskQueue {
 
 	private async updateOwned(
 		taskId: string,
-		workerId: string,
+		_workerId: string,
 		mode: "leased" | "owned",
 		update: () => Promise<TaskRow[]>,
 	): Promise<RecoveryTask> {
