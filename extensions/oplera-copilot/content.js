@@ -8,9 +8,9 @@ function visibleText(element) {
 	return normalize(element.getAttribute("title") || element.textContent || "");
 }
 
-function detectCurrentConversation() {
-	const header = document.querySelector("header");
-	if (!header) return { title: null, phone: null, pageTitle: document.title };
+function detectCurrentConversation(root = document) {
+	const header = root.querySelector("header");
+	if (!header) return { title: null, phone: null, pageTitle: root.title };
 
 	const candidates = [
 		...header.querySelectorAll("[title]"),
@@ -24,12 +24,16 @@ function detectCurrentConversation() {
 	return {
 		title,
 		phone: phoneMatch ? phoneMatch[0] : null,
-		pageTitle: document.title,
+		pageTitle: root.title,
 	};
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-	if (message?.type !== "OPLERA_DETECT_CONTEXT") return false;
-	sendResponse(detectCurrentConversation());
-	return false;
-});
+globalThis.OpleraCopilotDetector = { detectCurrentConversation };
+
+if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+		if (message?.type !== "OPLERA_DETECT_CONTEXT") return false;
+		sendResponse(detectCurrentConversation());
+		return false;
+	});
+}

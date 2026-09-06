@@ -17,7 +17,6 @@ import type {
 	HubSpotCopilotSearchInput,
 	HubSpotSellerCopilotSource,
 } from "../pilot/hubspot.ts";
-import type { CopilotConfig } from "./config.ts";
 import type {
 	InternalRecoveryDecision,
 	InternalRecoveryMessage,
@@ -260,7 +259,6 @@ export class RevenueContextService {
 	constructor(
 		private readonly hubspot: RevenueContextHubSpotProvider,
 		private readonly internal: InternalRevenueContextReader,
-		private readonly config: CopilotConfig,
 		private readonly engine = new SellerCopilotEngine(),
 		private readonly clock: () => Date = () => new Date(),
 	) {}
@@ -387,11 +385,7 @@ export class RevenueContextService {
 				whatsapp: whatsappFreshness,
 				oplera: internal.freshnessAt,
 			},
-			links: {
-				hubspot: this.config.COPILOT_HUBSPOT_PORTAL_ID
-					? `https://app.hubspot.com/contacts/${this.config.COPILOT_HUBSPOT_PORTAL_ID}/deal/${encodeURIComponent(source.deal.dealId)}`
-					: null,
-			},
+			links: { hubspot: null },
 		};
 	}
 }

@@ -43,7 +43,7 @@ export function getSellerCopilotRuntime(): SellerCopilotRuntime {
 		const reader = new PostgresInternalRevenueContextReader(sql);
 		singleton = new SellerCopilotRuntime(
 			config,
-			new RevenueContextService(pilot.hubspot, reader, config),
+			new RevenueContextService(pilot.hubspot, reader),
 			"postgres",
 		);
 		return singleton;
@@ -51,7 +51,7 @@ export function getSellerCopilotRuntime(): SellerCopilotRuntime {
 	const reader = new NullInternalRevenueContextReader();
 	singleton = new SellerCopilotRuntime(
 		config,
-		new RevenueContextService(pilot.hubspot, reader, config),
+		new RevenueContextService(pilot.hubspot, reader),
 		"limited",
 	);
 	return singleton;

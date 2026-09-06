@@ -8,6 +8,7 @@ import {
 	Moon,
 	Search,
 	ShieldCheck,
+	Sparkles,
 	Sun,
 	Target,
 	UserRoundCheck,
@@ -33,12 +34,14 @@ import {
 } from "@/components/ui/sheet.tsx";
 import { agentStatusLabel, fullDateTime } from "@/lib/pt-br.ts";
 import { cn } from "@/lib/utils.ts";
+import SellerCopilotPage from "@/tools/recovery/seller-copilot-page.tsx";
 
 export type OpleraSection =
 	| "overview"
 	| "queue"
 	| "opportunities"
 	| "conversations"
+	| "copilot"
 	| "policies"
 	| "activity";
 
@@ -64,8 +67,9 @@ export const OPLERA_NAVIGATION: NavigationItem[] = [
 		icon: MessageSquare,
 		shortcut: "4",
 	},
-	{ id: "policies", label: "Políticas", icon: ShieldCheck, shortcut: "5" },
-	{ id: "activity", label: "Atividade", icon: Activity, shortcut: "6" },
+	{ id: "copilot", label: "Copilot", icon: Sparkles, shortcut: "5" },
+	{ id: "policies", label: "Políticas", icon: ShieldCheck, shortcut: "6" },
+	{ id: "activity", label: "Atividade", icon: Activity, shortcut: "7" },
 ];
 
 function BrandMark() {
@@ -167,6 +171,7 @@ export function OpleraShell({
 		setMobileOpen(false);
 		setCommandOpen(false);
 	};
+	const demoMode = window.location.pathname === "/demo";
 
 	return (
 		<div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -226,7 +231,15 @@ export function OpleraShell({
 					</div>
 				</nav>
 				<div className="min-w-0 flex-1 overflow-hidden">
-					{children}
+					{page === "copilot" ? (
+						<main className="min-h-[calc(100dvh-48px)] overflow-y-auto px-4 py-6 sm:px-6 md:px-8 md:py-8">
+							<div className="mx-auto w-full max-w-[1120px]">
+								<SellerCopilotPage demoMode={demoMode} />
+							</div>
+						</main>
+					) : (
+						children
+					)}
 					<footer className="border-t px-6 py-3 text-[10px] text-muted-foreground">
 						Gerado em {fullDateTime.format(new Date(generatedAt))}. A
 						orquestração continua executando no servidor.

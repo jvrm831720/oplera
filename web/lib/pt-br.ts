@@ -3,6 +3,7 @@ import type {
 	RecoveryReasonCode,
 	RecoveryStatus,
 } from "../../api/autonomy/types.ts";
+import type { CopilotServiceWindowStatus } from "../../api/copilot/types.ts";
 
 export const brlCurrency = new Intl.NumberFormat("pt-BR", {
 	style: "currency",
@@ -57,6 +58,12 @@ const POLICY_LABELS: Record<PolicyDecision["result"], string> = {
 	allowed: "Permitido",
 	blocked: "Bloqueado",
 	requires_approval: "Requer aprovação",
+};
+
+const SERVICE_WINDOW_LABELS: Record<CopilotServiceWindowStatus, string> = {
+	open: "Janela de atendimento aberta",
+	closed: "Fora da janela de atendimento",
+	unknown: "Janela de atendimento desconhecida",
 };
 
 const AGENT_STATUS_LABELS: Record<string, string> = {
@@ -168,6 +175,10 @@ export function recoveryReasonLabel(reason: RecoveryReasonCode): string {
 
 export function policyResultLabel(result: PolicyDecision["result"]): string {
 	return POLICY_LABELS[result];
+}
+
+export function serviceWindowLabel(status: CopilotServiceWindowStatus): string {
+	return SERVICE_WINDOW_LABELS[status];
 }
 
 export function agentStatusLabel(status: string): string {

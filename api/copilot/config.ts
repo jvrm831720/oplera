@@ -20,7 +20,6 @@ const allowedOrigins = z
 export const copilotConfigSchema = z.object({
 	COPILOT_ACCESS_TOKEN: z.string().min(32),
 	COPILOT_ALLOWED_ORIGINS: allowedOrigins,
-	COPILOT_HUBSPOT_PORTAL_ID: z.string().regex(/^\d+$/).optional(),
 });
 
 export type CopilotConfig = z.infer<typeof copilotConfigSchema>;
