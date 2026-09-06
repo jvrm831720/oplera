@@ -1,0 +1,69 @@
+name: Visual QA Comp frontend port
+
+on:
+  push:
+    branches:
+      - feat/comp-ai-frontend-port-v0.4.2
+    paths:
+      - .github/workflows/visual-qa-comp-port.yml
+
+permissions:
+  contents: write
+
+jobs:
+  visual-qa:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Build frontend
+        run: bun run build:web
+      - name: Start Oplera demo
+        run: |
+          PORT=3001 bun api/main.bun.ts > /tmp/oplera-demo.log 2>&1 &
+          echo $! > /tmp/oplera-demo.pid
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/health > /tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/health.json
+          grep -F '"status":"ok"' /tmp/health.json
+          grep -F '"service":"oplera-revenue"' /tmp/health.json
+          curl --fail --silent http://127.0.0.1:3001/demo > /tmp/demo.html
+          test -s /tmp/demo.html
+      - name: Capture desktop light, desktop dark and mobile
+        run: |
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME"
+          mkdir -p visual-qa
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1000 --screenshot=visual-qa/desktop-light.png http://127.0.0.1:3001/demo
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --force-dark-mode --window-size=1440,1000 --screenshot=visual-qa/desktop-dark.png http://127.0.0.1:3001/demo
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,844 --screenshot=visual-qa/mobile-light.png http://127.0.0.1:3001/demo
+          python3 - <<'PY'
+          import pathlib, struct
+          for path in sorted(pathlib.Path('visual-qa').glob('*.png')):
+              data = path.read_bytes()
+              assert data[:8] == b'\x89PNG\r\n\x1a\n'
+              width, height = struct.unpack('>II', data[16:24])
+              print(f'{path.name}: {width}x{height}, {len(data)} bytes')
+              assert len(data) > 10_000
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oplera-comp-frontend-visual-qa
+          path: visual-qa/*.png
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/visual-qa-comp-port.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/visual-qa-comp-port.yml
+          git commit -m "chore: remove temporary visual QA workflow"
+          git push origin HEAD:feat/comp-ai-frontend-port-v0.4.2
