@@ -73,7 +73,10 @@ describe("Oplera Copilot Chrome extension", () => {
 				return name === "title" ? this.title : null;
 			}
 		}
-		const titleElement = new FakeHTMLElement(fixtureTitle ?? null, fixtureTitle ?? "");
+		const titleElement = new FakeHTMLElement(
+			fixtureTitle ?? null,
+			fixtureTitle ?? "",
+		);
 		const header = {
 			querySelectorAll(selector: string) {
 				return selector === "[title]" ? [titleElement] : [];
@@ -97,8 +100,18 @@ describe("Oplera Copilot Chrome extension", () => {
 			documentObject: typeof documentFixture,
 			htmlElement: typeof FakeHTMLElement,
 			chromeObject: undefined,
-		) => { detectCurrentConversation(root?: typeof documentFixture): { title: string | null; phone: string | null } };
-		const detector = loadDetector(sandbox, documentFixture, FakeHTMLElement, undefined);
+		) => {
+			detectCurrentConversation(root?: typeof documentFixture): {
+				title: string | null;
+				phone: string | null;
+			};
+		};
+		const detector = loadDetector(
+			sandbox,
+			documentFixture,
+			FakeHTMLElement,
+			undefined,
+		);
 		const detected = detector.detectCurrentConversation(documentFixture);
 		expect(detected.title).toBe("Mariana Costa");
 		expect(detected.phone).toBeNull();

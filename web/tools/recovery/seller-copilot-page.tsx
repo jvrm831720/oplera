@@ -143,7 +143,8 @@ function AuthorizationField({
 				placeholder="Cole o token de acesso do piloto"
 			/>
 			<p className="text-[10px] text-muted-foreground">
-				O token fica apenas nesta sessão do navegador e não é incorporado ao frontend.
+				O token fica apenas nesta sessão do navegador e não é incorporado ao
+				frontend.
 			</p>
 		</div>
 	);
@@ -157,7 +158,9 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 
 	const copyMessage = async () => {
 		if (!canCopy || !context.nextBestAction.suggestedMessage) return;
-		await navigator.clipboard.writeText(context.nextBestAction.suggestedMessage);
+		await navigator.clipboard.writeText(
+			context.nextBestAction.suggestedMessage,
+		);
 		setCopied(true);
 		window.setTimeout(() => setCopied(false), 1400);
 	};
@@ -172,13 +175,17 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 								<CardTitle>{context.identity.name}</CardTitle>
 								<CardDescription>{context.identity.company}</CardDescription>
 							</div>
-							<Badge variant="mono">Recovery Score {context.recovery.score}</Badge>
+							<Badge variant="mono">
+								Recovery Score {context.recovery.score}
+							</Badge>
 						</div>
 					</CardHeader>
 					<CardContent className="grid gap-4 text-xs sm:grid-cols-2">
 						<div>
 							<p className="text-muted-foreground">Cargo</p>
-							<p className="mt-1 font-medium">{context.identity.role ?? "Sem dados"}</p>
+							<p className="mt-1 font-medium">
+								{context.identity.role ?? "Sem dados"}
+							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">Status</p>
@@ -190,11 +197,15 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 						</div>
 						<div>
 							<p className="text-muted-foreground">Telefone</p>
-							<p className="mt-1 font-medium">{context.identity.phone ?? "Sem dados"}</p>
+							<p className="mt-1 font-medium">
+								{context.identity.phone ?? "Sem dados"}
+							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">E-mail</p>
-							<p className="mt-1 break-all font-medium">{context.identity.email ?? "Sem dados"}</p>
+							<p className="mt-1 break-all font-medium">
+								{context.identity.email ?? "Sem dados"}
+							</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -202,7 +213,9 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 				<Card>
 					<CardHeader>
 						<CardTitle>Oportunidade</CardTitle>
-						<CardDescription>Contexto comercial essencial do HubSpot.</CardDescription>
+						<CardDescription>
+							Contexto comercial essencial do HubSpot.
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="grid gap-4 text-xs sm:grid-cols-2">
 						<div className="sm:col-span-2">
@@ -224,7 +237,9 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 						</div>
 						<div>
 							<p className="text-muted-foreground">Responsável</p>
-							<p className="mt-1 font-medium">{context.deal.owner || "Sem dados"}</p>
+							<p className="mt-1 font-medium">
+								{context.deal.owner || "Sem dados"}
+							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">Última atividade</p>
@@ -247,14 +262,20 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 							</span>
 						</div>
 						<div className="flex items-center justify-between gap-3 border-b pb-2">
-							<span className="text-muted-foreground">Janela do WhatsApp</span>
+							<span className="text-muted-foreground">
+								Janela do WhatsApp
+							</span>
 							<span className="text-right font-medium">
 								{serviceWindowLabel(context.conversation.serviceWindowStatus)}
 							</span>
 						</div>
 						<div className="flex items-center justify-between gap-3">
 							<span className="text-muted-foreground">Política</span>
-							<Badge variant={context.policies.result === "blocked" ? "outline" : "token"}>
+							<Badge
+								variant={
+									context.policies.result === "blocked" ? "outline" : "token"
+								}
+							>
 								{policyResultLabel(context.policies.result)}
 							</Badge>
 						</div>
@@ -273,8 +294,12 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 						<div className="flex items-center gap-2 text-xs text-muted-foreground">
 							<ShieldCheck className="size-4" /> Próximo melhor passo
 						</div>
-						<CardTitle className="text-lg">{context.nextBestAction.title}</CardTitle>
-						<CardDescription>{context.nextBestAction.description}</CardDescription>
+						<CardTitle className="text-lg">
+							{context.nextBestAction.title}
+						</CardTitle>
+						<CardDescription>
+							{context.nextBestAction.description}
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
@@ -301,8 +326,17 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 								</Button>
 							) : null}
 							{context.links.hubspot ? (
-								<Button type="button" size="sm" variant="outline" asChild>
-									<a href={context.links.hubspot} target="_blank" rel="noreferrer">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									asChild
+								>
+									<a
+										href={context.links.hubspot}
+										target="_blank"
+										rel="noreferrer"
+									>
 										<ExternalLink className="size-3.5" /> Abrir no HubSpot
 									</a>
 								</Button>
@@ -314,7 +348,9 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 				<Card>
 					<CardHeader>
 						<CardTitle>Últimos sinais</CardTitle>
-						<CardDescription>Somente sinais úteis para conduzir a oportunidade.</CardDescription>
+						<CardDescription>
+							Somente sinais úteis para conduzir a oportunidade.
+						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ul className="space-y-2 text-xs">
@@ -326,7 +362,9 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 									</li>
 								))
 							) : (
-								<li className="text-muted-foreground">Sem sinais recentes relevantes.</li>
+								<li className="text-muted-foreground">
+									Sem sinais recentes relevantes.
+								</li>
 							)}
 						</ul>
 					</CardContent>
@@ -345,7 +383,8 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 										? "HubSpot"
 										: item.source === "whatsapp"
 											? "WhatsApp"
-											: "Oplera"} · {compactDateTime.format(new Date(item.timestamp))}
+											: "Oplera"}{" "}
+									· {compactDateTime.format(new Date(item.timestamp))}
 								</p>
 							</div>
 						))}
@@ -356,7 +395,11 @@ function ContextView({ context }: { context: SellerCopilotContext }) {
 	);
 }
 
-export default function SellerCopilotPage({ demoMode = false }: { demoMode?: boolean }) {
+export default function SellerCopilotPage({
+	demoMode = false,
+}: {
+	demoMode?: boolean;
+}) {
 	const [token, setToken] = useState("");
 	const [query, setQuery] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -383,7 +426,8 @@ export default function SellerCopilotPage({ demoMode = false }: { demoMode?: boo
 			`/api/v0.5/copilot/context/${encodeURIComponent(opportunityId)}`,
 			{ headers: headers() },
 		);
-		if (!response.ok) throw new Error(response.status === 401 ? "token" : "contexto");
+		if (!response.ok)
+			throw new Error(response.status === 401 ? "token" : "contexto");
 		setContext((await response.json()) as SellerCopilotContext);
 		setMatches([]);
 	};
@@ -398,7 +442,14 @@ export default function SellerCopilotPage({ demoMode = false }: { demoMode?: boo
 		try {
 			if (demoMode) {
 				const normalized = trimmed.toLocaleLowerCase("pt-BR");
-				if (["mariana", "mariana costa", "clínica aurora", "clinica aurora"].some((item) => normalized.includes(item))) {
+				if (
+					[
+						"mariana",
+						"mariana costa",
+						"clínica aurora",
+						"clinica aurora",
+					].some((item) => normalized.includes(item))
+				) {
 					setContext(DEMO_CONTEXT);
 				} else {
 					setContext(null);
@@ -415,7 +466,8 @@ export default function SellerCopilotPage({ demoMode = false }: { demoMode?: boo
 				headers: headers(),
 				body: JSON.stringify({ query: trimmed }),
 			});
-			if (!response.ok) throw new Error(response.status === 401 ? "token" : "resolução");
+			if (!response.ok)
+				throw new Error(response.status === 401 ? "token" : "resolução");
 			const result = (await response.json()) as CopilotResolveResult;
 			if (result.status === "resolved") {
 				await loadContext(result.match.opportunityId);
@@ -441,84 +493,114 @@ export default function SellerCopilotPage({ demoMode = false }: { demoMode?: boo
 
 	return (
 		<div className="flex flex-col gap-6">
-		<div className="flex flex-col gap-1">
-			<div className="flex flex-wrap items-center gap-2">
-				<h1 className="font-medium text-2xl tracking-tight">Copilot do Vendedor</h1>
-				{demoMode ? <Badge variant="outline">Cenário de demonstração</Badge> : null}
-			</div>
-			<p className="max-w-3xl text-sm text-muted-foreground">
-				Busque um contato para visualizar contexto comercial e o próximo melhor passo. O Copilot é somente leitura e não altera CRM nem envia mensagens.
-			</p>
-		</div>
-
-		<Card>
-			<CardHeader>
-				<CardTitle>Buscar contato</CardTitle>
-				<CardDescription>Use nome, telefone ou e-mail já existente no HubSpot.</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)_auto] lg:items-end" onSubmit={resolve}>
-					<div className="grid gap-1.5">
-						<label htmlFor="copilot-search" className="text-xs font-medium">Buscar contato</label>
-						<Input
-							id="copilot-search"
-							value={query}
-							onChange={(event) => setQuery(event.currentTarget.value)}
-							placeholder="Nome, telefone ou e-mail"
-						/>
-					</div>
+			<div className="flex flex-col gap-1">
+				<div className="flex flex-wrap items-center gap-2">
+					<h1 className="font-medium text-2xl tracking-tight">
+						Copilot do Vendedor
+					</h1>
 					{demoMode ? (
-						<div className="rounded-md border bg-muted/35 px-3 py-2.5 text-xs text-muted-foreground">
-							Use “Mariana Costa” para repetir o cenário local.
-						</div>
-					) : (
-						<AuthorizationField token={token} onTokenChange={setToken} />
-					)}
-					<Button type="submit" disabled={loading}>
-						<Search className="size-4" /> {loading ? "Buscando..." : "Buscar"}
-					</Button>
-				</form>
-			</CardContent>
-		</Card>
+						<Badge variant="outline">Cenário de demonstração</Badge>
+					) : null}
+				</div>
+				<p className="max-w-3xl text-sm text-muted-foreground">
+					Busque um contato para visualizar contexto comercial e o próximo melhor
+					passo. O Copilot é somente leitura e não altera CRM nem envia mensagens.
+				</p>
+			</div>
 
-		{status === "ambiguous" ? (
 			<Card>
 				<CardHeader>
-					<CardTitle>Encontramos mais de um contato</CardTitle>
-					<CardDescription>Selecione o registro correto para carregar o contexto.</CardDescription>
+					<CardTitle>Buscar contato</CardTitle>
+					<CardDescription>
+						Use nome, telefone ou e-mail já existente no HubSpot.
+					</CardDescription>
 				</CardHeader>
-				<CardContent className="grid gap-2">
-					{matches.map((match) => (
-						<Button
-							key={match.opportunityId}
-							type="button"
-							variant="outline"
-							className="h-auto justify-between gap-4 py-3 text-left"
-							onClick={() => loadContext(match.opportunityId).catch(() => setError("Não foi possível carregar o contexto."))}
-						>
-							<span>
-								<strong className="block text-xs">{match.name}</strong>
-								<span className="text-[10px] text-muted-foreground">{match.company} · {match.dealName}</span>
-							</span>
-							<span className="text-xs">{brlCurrency.format(match.amount)}</span>
+				<CardContent>
+					<form
+						className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)_auto] lg:items-end"
+						onSubmit={resolve}
+					>
+						<div className="grid gap-1.5">
+							<label
+								htmlFor="copilot-search"
+								className="text-xs font-medium"
+							>
+								Buscar contato
+							</label>
+							<Input
+								id="copilot-search"
+								value={query}
+								onChange={(event) => setQuery(event.currentTarget.value)}
+								placeholder="Nome, telefone ou e-mail"
+							/>
+						</div>
+						{demoMode ? (
+							<div className="rounded-md border bg-muted/35 px-3 py-2.5 text-xs text-muted-foreground">
+								Use “Mariana Costa” para repetir o cenário local.
+							</div>
+						) : (
+							<AuthorizationField token={token} onTokenChange={setToken} />
+						)}
+						<Button type="submit" disabled={loading}>
+							<Search className="size-4" />
+							{loading ? "Buscando..." : "Buscar"}
 						</Button>
-					))}
+					</form>
 				</CardContent>
 			</Card>
-		) : null}
 
-		{status === "error" && error ? (
-			<div className="rounded-lg border bg-card p-4 text-sm">
-				<p className="font-medium">{error}</p>
-				<p className="mt-1 text-xs text-muted-foreground">Revise a busca ou a configuração de acesso e tente novamente.</p>
-			</div>
-		) : null}
+			{status === "ambiguous" ? (
+				<Card>
+					<CardHeader>
+						<CardTitle>Encontramos mais de um contato</CardTitle>
+						<CardDescription>
+							Selecione o registro correto para carregar o contexto.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="grid gap-2">
+						{matches.map((match) => (
+							<Button
+								key={match.opportunityId}
+								type="button"
+								variant="outline"
+								className="h-auto justify-between gap-4 py-3 text-left"
+								onClick={() =>
+									loadContext(match.opportunityId).catch(() =>
+										setError("Não foi possível carregar o contexto."),
+									)
+								}
+							>
+								<span>
+									<strong className="block text-xs">{match.name}</strong>
+									<span className="text-[10px] text-muted-foreground">
+										{match.company} · {match.dealName}
+									</span>
+								</span>
+								<span className="text-xs">
+									{brlCurrency.format(match.amount)}
+								</span>
+							</Button>
+						))}
+					</CardContent>
+				</Card>
+			) : null}
 
-		{status === "loading" ? (
-			<div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Carregando contexto comercial...</div>
-		) : null}
+			{status === "error" && error ? (
+				<div className="rounded-lg border bg-card p-4 text-sm">
+					<p className="font-medium">{error}</p>
+					<p className="mt-1 text-xs text-muted-foreground">
+						Revise a busca ou a configuração de acesso e tente novamente.
+					</p>
+				</div>
+			) : null}
 
-		{context ? <ContextView context={context} /> : null}
+			{status === "loading" ? (
+				<div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
+					Carregando contexto comercial...
+				</div>
+			) : null}
+
+			{context ? <ContextView context={context} /> : null}
 		</div>
 	);
 }

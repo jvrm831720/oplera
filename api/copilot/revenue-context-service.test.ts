@@ -111,8 +111,14 @@ class FakeHubSpot implements RevenueContextHubSpotProvider {
 		}
 		if (input.name === "Contato Duplicado") {
 			return [
-				{ source: source("100", "Contato Duplicado", "Clínica Aurora"), score: 90 },
-				{ source: source("101", "Contato Duplicado", "Aurora Labs"), score: 90 },
+				{
+					source: source("100", "Contato Duplicado", "Clínica Aurora"),
+					score: 90,
+				},
+				{
+					source: source("101", "Contato Duplicado", "Aurora Labs"),
+					score: 90,
+				},
 			];
 		}
 		return [];
@@ -179,7 +185,8 @@ const internalContext: InternalRevenueContext = {
 
 class FakeInternalReader implements InternalRevenueContextReader {
 	async read(externalOpportunityId: string) {
-		if (externalOpportunityId !== "100") throw new Error("unexpected_opportunity");
+		if (externalOpportunityId !== "100")
+			throw new Error("unexpected_opportunity");
 		return internalContext;
 	}
 }
@@ -201,45 +208,76 @@ describe("RevenueContextService", () => {
 		expect(context.conversation.objection).toBe("timing");
 		expect(context.conversation.serviceWindowStatus).toBe("open");
 		expect(context.nextBestAction.type).toBe("timing_confirm");
-		expect(context.timeline.some((item) => item.source === "hubspot")).toBe(true);
-		expect(context.timeline.some((item) => item.source === "oplera")).toBe(true);
-		expect(context.timeline.some((item) => item.source === "whatsapp")).toBe(true);
+		expect(context.timeline.some((item) => item.source === "hubspot")).toBe(
+			true,
+		);
+		expect(context.timeline.some((item) => item.source === "oplera")).toBe(
+			true,
+		);
+		expect(context.timeline.some((item) => item.source === "whatsapp")).toBe(
+			true,
+		);
 		expect(context.freshness.oplera).toBe("2026-09-07T14:01:00.000Z");
 		expect(context.links.hubspot).toBeNull();
 	});
 
 	test("resolve telefone único", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
 		const result = await service.resolve({ phone: "+5521999999999" });
 		expect(result.status).toBe("resolved");
-		if (result.status === "resolved") expect(result.match.opportunityId).toBe("100");
+		if (result.status === "resolved")
+			expect(result.match.opportunityId).toBe("100");
 	});
 
 	test("resolve e-mail único", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
-		expect((await service.resolve({ email: "mariana@example.com" })).status).toBe("resolved");
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
+		expect(
+			(await service.resolve({ email: "mariana@example.com" })).status,
+		).toBe("resolved");
 	});
 
 	test("resolve nome único", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
-		expect((await service.resolve({ name: "Mariana Costa" })).status).toBe("resolved");
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
+		expect((await service.resolve({ name: "Mariana Costa" })).status).toBe(
+			"resolved",
+		);
 	});
 
 	test("retorna ambiguous para nome duplicado", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
 		const result = await service.resolve({ name: "Contato Duplicado" });
 		expect(result.status).toBe("ambiguous");
 		expect(result.matches).toHaveLength(2);
 	});
 
 	test("retorna not_found quando não existe correspondência", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
 		const result = await service.resolve({ email: "ausente@example.com" });
 		expect(result).toEqual({ status: "not_found", matches: [] });
 	});
 
 	test("não inventa contexto para oportunidade inexistente", async () => {
-		const service = new RevenueContextService(new FakeHubSpot(), new FakeInternalReader());
-		await expect(service.getContext("999")).rejects.toThrow("copilot_context_not_found");
+		const service = new RevenueContextService(
+			new FakeHubSpot(),
+			new FakeInternalReader(),
+		);
+		await expect(service.getContext("999")).rejects.toThrow(
+			"copilot_context_not_found",
+		);
 	});
 });

@@ -32,7 +32,13 @@ const forbidden = [
 	"Allowed",
 	"Requires Approval",
 ];
-const genericVisibleEnglish = ["Close", "Search", "Refresh", "Retry", "Loading"];
+const genericVisibleEnglish = [
+	"Close",
+	"Search",
+	"Refresh",
+	"Retry",
+	"Loading",
+];
 
 async function files(directory: string): Promise<string[]> {
 	const result: string[] = [];
@@ -49,7 +55,10 @@ function userFacingPatterns(value: string): RegExp[] {
 	return [
 		new RegExp(`["']${escaped}["']`),
 		new RegExp(`>\\s*${escaped}\\s*<`),
-		new RegExp(`(?:aria-label|title|placeholder)=["'][^"']*\\b${escaped}\\b`, "i"),
+		new RegExp(
+			`(?:aria-label|title|placeholder)=["'][^"']*\\b${escaped}\\b`,
+			"i",
+		),
 	];
 }
 
@@ -60,7 +69,9 @@ for (const directory of roots) {
 		const source = await readFile(path, "utf-8");
 		for (const value of [...forbidden, ...genericVisibleEnglish]) {
 			if (userFacingPatterns(value).some((pattern) => pattern.test(source))) {
-				failures.push(`${rel}: texto user-facing em inglês encontrado: ${value}`);
+				failures.push(
+					`${rel}: texto user-facing em inglês encontrado: ${value}`,
+				);
 			}
 		}
 		if (/>(?:[^<>]*\s)?outbound(?:\s[^<>]*)?</i.test(source)) {
@@ -74,4 +85,6 @@ if (failures.length) {
 	process.exit(1);
 }
 
-console.log("Copy QA PT-BR: nenhuma string proibida encontrada em web/ e extensions/.");
+console.log(
+	"Copy QA PT-BR: nenhuma string proibida encontrada em web/ e extensions/.",
+);
