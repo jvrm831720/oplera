@@ -22,10 +22,10 @@ function ToolRouter() {
 
 	if (!toolName) {
 		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
+			<div className="flex min-h-dvh items-center justify-center p-6">
 				<div className="flex items-center gap-3 text-muted-foreground">
-					<span className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
-					<span className="text-sm">Connecting to host...</span>
+					<span className="size-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
+					<span className="text-sm">Conectando ao ambiente da Oplera...</span>
 				</div>
 			</div>
 		);
@@ -35,8 +35,10 @@ function ToolRouter() {
 
 	if (!Page) {
 		return (
-			<div className="flex items-center justify-center min-h-dvh p-6">
-				<p className="text-sm text-destructive">Unknown tool: {toolName}</p>
+			<div className="flex min-h-dvh items-center justify-center p-6">
+				<p className="text-sm text-destructive">
+					Ferramenta não reconhecida: {toolName}
+				</p>
 			</div>
 		);
 	}

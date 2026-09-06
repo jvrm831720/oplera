@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Oplera Copilot</title>
+		<link rel="stylesheet" href="sidepanel.css" />
+	</head>
+	<body>
+		<header class="app-header">
+			<div class="brand-mark">O</div>
+			<div class="brand-copy">
+				<strong>OPLERA COPILOT</strong>
+				<span>Copilot do Vendedor</span>
+			</div>
+			<button id="refresh" class="icon-button" type="button" aria-label="Atualizar contexto" title="Atualizar">↻</button>
+		</header>
+
+		<main id="app" class="app-shell" aria-live="polite">
+			<section id="setup-state" class="state-card hidden">
+				<h1>Configure o Copilot</h1>
+				<p>Defina a URL da API Oplera e o token de acesso do piloto antes de consultar contexto comercial.</p>
+				<button id="open-options" class="primary-button" type="button">Abrir configurações</button>
+			</section>
+
+			<section id="loading-state" class="state-card hidden">
+				<div class="spinner" aria-hidden="true"></div>
+				<div><strong>Carregando contexto</strong><p>Consultando a Oplera para a conversa atual.</p></div>
+			</section>
+
+			<section id="error-state" class="state-card hidden">
+				<h1>Não foi possível carregar o contexto</h1>
+				<p id="error-message">Verifique a configuração e tente novamente.</p>
+				<button id="retry" class="secondary-button" type="button">Tentar novamente</button>
+			</section>
+
+			<section id="not-found-state" class="hidden stack">
+				<div class="state-card">
+					<h1>Contato não encontrado na Oplera</h1>
+					<p>A conversa atual não foi associada automaticamente a uma oportunidade existente.</p>
+				</div>
+				<form id="search-form" class="card stack-sm">
+					<label for="search-query">Buscar no CRM</label>
+					<div class="search-row">
+						<input id="search-query" type="search" autocomplete="off" placeholder="Nome, telefone ou e-mail" />
+						<button class="primary-button" type="submit">Buscar</button>
+					</div>
+					<p class="hint">A busca apenas resolve um contato existente. O Copilot não cria leads ou contatos.</p>
+				</form>
+			</section>
+
+			<section id="ambiguous-state" class="hidden stack">
+				<div class="state-card">
+					<h1>Encontramos mais de um contato</h1>
+					<p>Selecione a oportunidade correta para esta conversa.</p>
+				</div>
+				<div id="ambiguous-list" class="stack-sm"></div>
+			</section>
+
+			<section id="context-state" class="hidden stack">
+				<section class="identity-block">
+					<div>
+						<h1 id="contact-name">Contato</h1>
+						<p id="contact-company">Empresa</p>
+					</div>
+					<span id="score-badge" class="score-badge">Score 0</span>
+				</section>
+
+				<section class="card grid-info" aria-label="Identidade e oportunidade">
+					<div><span>Oportunidade</span><strong id="deal-name">—</strong></div>
+					<div><span>Etapa</span><strong id="deal-stage">—</strong></div>
+					<div><span>Valor</span><strong id="deal-amount">—</strong></div>
+					<div><span>Responsável</span><strong id="deal-owner">—</strong></div>
+					<div><span>Status</span><strong id="recovery-status">—</strong></div>
+					<div><span>Última atividade</span><strong id="last-activity">—</strong></div>
+				</section>
+
+				<section class="card">
+					<div class="section-heading"><h2>Por que este lead importa</h2><span id="policy-badge" class="status-pill">—</span></div>
+					<p id="recovery-reason" class="body-copy">—</p>
+					<p id="service-window" class="hint">—</p>
+				</section>
+
+				<section class="card">
+					<h2>Últimos sinais</h2>
+					<ul id="signals-list" class="signal-list"></ul>
+				</section>
+
+				<section class="next-action-card">
+					<div class="eyebrow">PRÓXIMO MELHOR PASSO</div>
+					<h2 id="next-title">—</h2>
+					<p id="next-description" class="body-copy">—</p>
+					<div class="why-block"><strong>Por quê</strong><p id="next-why">—</p></div>
+					<div><strong class="mini-heading">Evidências</strong><ul id="evidence-list" class="signal-list"></ul></div>
+					<div id="approval-warning" class="approval-warning hidden">Requer aprovação antes de qualquer ação de outbound.</div>
+					<div class="actions-row">
+						<button id="copy-message" class="primary-button hidden" type="button">Copiar mensagem</button>
+						<button id="open-hubspot" class="secondary-button hidden" type="button">Abrir no HubSpot</button>
+					</div>
+				</section>
+
+				<section class="card">
+					<h2>Contexto recente</h2>
+					<div id="timeline-list" class="timeline-list"></div>
+				</section>
+			</section>
+		</main>
+
+		<script src="sidepanel.js"></script>
+	</body>
+</html>

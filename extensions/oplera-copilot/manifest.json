@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Oplera Copilot",
+  "description": "Contexto comercial e próximo melhor passo para vendedores.",
+  "version": "0.5.0",
+  "permissions": ["sidePanel", "storage", "tabs"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Abrir Oplera Copilot"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

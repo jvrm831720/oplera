@@ -39,8 +39,7 @@ function EmptyState() {
 				</div>
 				<h1 className="mt-4 text-lg font-semibold">Oplera</h1>
 				<p className="mt-2 text-xs leading-5 text-[#6f756e]">
-					Autonomous Revenue Recovery Agent. Execute uma análise ou abra{" "}
-					<strong>/demo</strong> para ver o ciclo completo.
+					Agente de Receita. Execute uma análise ou abra <strong>/demo</strong> para ver o ciclo completo.
 				</p>
 			</div>
 		</div>
@@ -59,16 +58,16 @@ export default function RecoveryPage() {
 
 	if (isDemo) return <OperatorConsole snapshot={buildDemoOperatorConsole()} />;
 	if (state.status === "initializing")
-		return <LoadingState label="Connecting to Oplera runtime..." />;
+		return <LoadingState label="Conectando ao runtime da Oplera..." />;
 	if (state.status === "tool-input")
-		return <LoadingState label="Evaluating revenue recovery context..." />;
+		return <LoadingState label="Avaliando o contexto de recuperação de receita..." />;
 	if (state.status === "connected") return <EmptyState />;
 	if (state.status === "error") {
 		return (
 			<div className="flex min-h-dvh items-center justify-center bg-[#f7f8f6] p-6">
 				<div className="max-w-lg rounded-md border border-red-200 bg-white p-5">
 					<p className="text-sm font-semibold text-red-700">
-						Não foi possível abrir a Operator Console
+						Não foi possível abrir o painel da Oplera
 					</p>
 					<p className="mt-2 text-xs text-red-600">{state.error}</p>
 				</div>

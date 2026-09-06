@@ -31,6 +31,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet.tsx";
+import { agentStatusLabel, fullDateTime } from "@/lib/pt-br.ts";
 import { cn } from "@/lib/utils.ts";
 
 export type OpleraSection =
@@ -49,22 +50,22 @@ type NavigationItem = {
 };
 
 export const OPLERA_NAVIGATION: NavigationItem[] = [
-	{ id: "overview", label: "Overview", icon: Target, shortcut: "1" },
-	{ id: "queue", label: "Recovery Queue", icon: Inbox, shortcut: "2" },
+	{ id: "overview", label: "Visão geral", icon: Target, shortcut: "1" },
+	{ id: "queue", label: "Fila de recuperação", icon: Inbox, shortcut: "2" },
 	{
 		id: "opportunities",
-		label: "Opportunities",
+		label: "Oportunidades",
 		icon: UserRoundCheck,
 		shortcut: "3",
 	},
 	{
 		id: "conversations",
-		label: "Conversations",
+		label: "Conversas",
 		icon: MessageSquare,
 		shortcut: "4",
 	},
-	{ id: "policies", label: "Policies", icon: ShieldCheck, shortcut: "5" },
-	{ id: "activity", label: "Activity", icon: Activity, shortcut: "6" },
+	{ id: "policies", label: "Políticas", icon: ShieldCheck, shortcut: "5" },
+	{ id: "activity", label: "Atividade", icon: Activity, shortcut: "6" },
 ];
 
 function BrandMark() {
@@ -122,7 +123,7 @@ function ThemeButton() {
 			type="button"
 			variant="ghost"
 			size="icon"
-			aria-label={dark ? "Use light mode" : "Use dark mode"}
+			aria-label={dark ? "Usar tema claro" : "Usar tema escuro"}
 			onClick={() => setTheme(dark ? "light" : "dark")}
 		>
 			{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -175,7 +176,7 @@ export function OpleraShell({
 					variant="ghost"
 					size="icon"
 					className="md:hidden"
-					aria-label="Open navigation"
+					aria-label="Abrir navegação"
 					onClick={() => setMobileOpen(true)}
 				>
 					<Menu className="size-4" />
@@ -187,7 +188,7 @@ export function OpleraShell({
 				<div className="min-w-0">
 					<p className="truncate text-sm font-medium">{companyName}</p>
 					<p className="truncate text-[10px] text-muted-foreground">
-						OPLERA · Revenue Recovery Agent
+						OPLERA · Agente de Receita
 					</p>
 				</div>
 				<div className="ml-auto flex items-center gap-1.5">
@@ -199,11 +200,11 @@ export function OpleraShell({
 						onClick={() => setCommandOpen(true)}
 					>
 						<Search className="size-3.5" />
-						Navigate
+						Navegar
 						<span className="ml-2 text-[10px] text-muted-foreground">⌘K</span>
 					</Button>
 					<div className="hidden items-center gap-1.5 px-1 text-[10px] text-muted-foreground lg:flex">
-						<CheckCircle2 className="size-3.5" />V{version} · Demo
+						<CheckCircle2 className="size-3.5" />V{version} · Modo demonstração
 					</div>
 					<ThemeButton />
 				</div>
@@ -211,14 +212,14 @@ export function OpleraShell({
 
 			<div className="flex min-h-0 flex-1">
 				<nav
-					aria-label="Primary"
+					aria-label="Navegação principal"
 					className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r py-3 md:flex"
 				>
 					<NavigationButtons page={page} onNavigate={navigate} />
 					<div className="mt-auto flex flex-col items-center gap-2 px-2 pb-1">
 						<div
 							className="flex size-8 items-center justify-center rounded-md border bg-card text-muted-foreground"
-							title={`Agent ${agentStatus}`}
+							title={`Agente: ${agentStatusLabel(agentStatus)}`}
 						>
 							<Bot className="size-4" />
 						</div>
@@ -227,12 +228,7 @@ export function OpleraShell({
 				<div className="min-w-0 flex-1 overflow-hidden">
 					{children}
 					<footer className="border-t px-6 py-3 text-[10px] text-muted-foreground">
-						Generated{" "}
-						{new Intl.DateTimeFormat("pt-BR", {
-							dateStyle: "short",
-							timeStyle: "short",
-						}).format(new Date(generatedAt))}
-						. Orchestration continues server-side.
+						Gerado em {fullDateTime.format(new Date(generatedAt))}. A orquestração continua executando no servidor.
 					</footer>
 				</div>
 			</div>
@@ -245,7 +241,7 @@ export function OpleraShell({
 							<span>OPLERA</span>
 						</SheetTitle>
 					</SheetHeader>
-					<nav className="flex flex-col gap-1 p-2">
+					<nav className="flex flex-col gap-1 p-2" aria-label="Navegação móvel">
 						<NavigationButtons page={page} onNavigate={navigate} mobile />
 					</nav>
 				</SheetContent>
@@ -254,14 +250,14 @@ export function OpleraShell({
 			<CommandDialog
 				open={commandOpen}
 				onOpenChange={setCommandOpen}
-				title="Oplera navigation"
-				description="Navigate existing revenue recovery surfaces"
+				title="Navegação da Oplera"
+				description="Acesse as superfícies existentes de recuperação de receita"
 			>
 				<Command>
-					<CommandInput placeholder="Go to an Oplera surface..." />
+					<CommandInput placeholder="Ir para uma área da Oplera..." />
 					<CommandList>
-						<CommandEmpty>No matching surface.</CommandEmpty>
-						<CommandGroup heading="Revenue recovery">
+						<CommandEmpty>Nenhuma área encontrada.</CommandEmpty>
+						<CommandGroup heading="Recuperação de receita">
 							{OPLERA_NAVIGATION.map((item) => {
 								const Icon = item.icon;
 								return (
