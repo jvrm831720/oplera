@@ -5,6 +5,21 @@ on: [push, pull_request]
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: oplera_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oplera_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +34,17 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
 
+      - name: Configure ephemeral PostgreSQL
+        run: echo "DATABASE_URL=postgresql://postgres@127.0.0.1:5432/oplera_test" >> "$GITHUB_ENV"
+
       - run: bun install --frozen-lockfile
+      - name: Migration smoke test on empty PostgreSQL
+        run: bun run db:migrate
       - run: bun run ci:check
       - run: bun run check
       - run: bun run test
+      - name: PostgreSQL integration tests
+        run: bun run test:postgres
+      - name: Verify migrations are repeatable
+        run: bun run db:migrate
       - run: bun run build
